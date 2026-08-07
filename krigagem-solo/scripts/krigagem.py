@@ -107,13 +107,42 @@ def ajustar_modelo(nome, hm, gm, npares, corte):
     return melhores
 
 
+def _matriz_aumentada(x, y, g):
+    n = len(x)
+    a = np.empty((n + 1, n + 1))
+    a[:n, :n] = g(np.hypot(x[:, None] - x[None, :], y[:, None] - y[None, :]))
+    a[:n, n] = 1.0
+    a[n, :n] = 1.0
+    a[n, n] = 0.0
+    return a
+
+
 def validacao_loo(x, y, z, nome, params):
-    """Leave-one-out: prediz cada ponto usando só os demais. Devolve (rmse, me)."""
+    """Leave-one-out EXATO pelo atalho de Dubrule (1983): inverte a matriz
+    aumentada UMA vez; o erro de cada ponto sai da diagonal da inversa —
+    e_i = −[W·z̃]_i / W_ii, com W = A⁻¹ e z̃ = [z; 0]. O(n³) em vez de O(n⁴)
+    do loop ingênuo (447 pontos: décimos de segundo em vez de minutos).
+    Devolve (rmse, me)."""
     x, y, z = (np.asarray(v, dtype=float) for v in (x, y, z))
     n = len(x)
     g = _gamma(nome, params)
-    d = np.hypot(x[:, None] - x[None, :], y[:, None] - y[None, :])
-    gamma_cheia = g(d)
+    try:
+        w = np.linalg.inv(_matriz_aumentada(x, y, g))
+    except np.linalg.LinAlgError:
+        return _validacao_loo_ingenua(x, y, z, nome, params)
+    yv = w @ np.append(z, 0.0)
+    diag = np.diag(w)[:n]
+    erros = -yv[:n] / diag
+    erros = erros[np.isfinite(erros)]
+    return float(np.sqrt(np.mean(erros**2))), float(np.mean(erros))
+
+
+def _validacao_loo_ingenua(x, y, z, nome, params):
+    """Referência O(n⁴) — usada no teste embutido p/ validar o atalho."""
+    x, y, z = (np.asarray(v, dtype=float) for v in (x, y, z))
+    n = len(x)
+    g = _gamma(nome, params)
+    gamma_cheia = g(np.hypot(x[:, None] - x[None, :], y[:, None] - y[None, :]))
 
     erros = np.empty(n)
     idx = np.arange(n)
@@ -175,22 +204,18 @@ def escolher_modelo(x, y, z, n_lags=12):
 
 # ---------------------------------------------------------------- interpolação
 
-def krigar(x, y, z, nome, params, xc, yc, mascara, bloco=20000):
+def krigar(x, y, z, nome, params, xc, yc, mascara, bloco=20000, progresso=None):
     """Krigagem ordinária nos centros de célula onde mascara=True.
 
     O sistema (n+1)×(n+1) é fatorado UMA vez (LU) e resolvido em blocos de
-    células. Devolve (malha_predita, malha_variancia) com NaN fora da máscara.
+    células. `progresso` (callable, recebe fração 0–1) dá sinal de vida em
+    malhas grandes. Devolve (malha_predita, malha_variancia) com NaN fora
+    da máscara.
     """
     x, y, z = (np.asarray(v, dtype=float) for v in (x, y, z))
     n = len(x)
     g = _gamma(nome, params)
-
-    a = np.empty((n + 1, n + 1))
-    a[:n, :n] = g(np.hypot(x[:, None] - x[None, :], y[:, None] - y[None, :]))
-    a[:n, n] = 1.0
-    a[n, :n] = 1.0
-    a[n, n] = 0.0
-    fator = lu_factor(a)
+    fator = lu_factor(_matriz_aumentada(x, y, g))
 
     ny, nx = mascara.shape
     gx, gy = np.meshgrid(np.asarray(xc, float), np.asarray(yc, float))
@@ -206,6 +231,8 @@ def krigar(x, y, z, nome, params, xc, yc, mascara, bloco=20000):
         lam = lu_solve(fator, b)
         pred[alvos[ini:fim]] = lam[:n].T @ z
         varkrig[alvos[ini:fim]] = np.einsum('ij,ij->j', lam[:n], b[:n]) + lam[n]
+        if progresso:
+            progresso(fim / len(alvos))
     return pred.reshape(ny, nx), varkrig.reshape(ny, nx)
 
 
@@ -232,6 +259,15 @@ if __name__ == '__main__':
     x = rng.uniform(0, 500, n)
     y = rng.uniform(0, 400, n)
     z = 10 + 4 * np.sin(x / 120) + 3 * np.cos(y / 90) + rng.normal(0, 0.4, n)
+
+    # o atalho de Dubrule tem que bater com o loop ingênuo (mesma matemática)
+    hm, gm, npares = variograma_experimental(x, y, z)
+    pr, _ = ajustar_modelo('esferico', hm, gm, npares, float(hm.max()))
+    rapido = validacao_loo(x, y, z, 'esferico', pr)
+    ingenuo = _validacao_loo_ingenua(x, y, z, 'esferico', pr)
+    assert abs(rapido[0] - ingenuo[0]) < 1e-8 and abs(rapido[1] - ingenuo[1]) < 1e-8, \
+        (rapido, ingenuo)
+    print(f'LOO rápido ≡ ingênuo OK (rmse {rapido[0]:.6f})')
 
     resultado = escolher_modelo(x, y, z)
     print('vencedor:', resultado['vencedor'],

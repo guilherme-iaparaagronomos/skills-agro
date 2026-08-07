@@ -69,9 +69,15 @@ def ler_laudo(caminho, filtro=None):
         colunas = leitor.fieldnames or []
         linhas = [ln for ln in leitor if any(str(v).strip() for v in ln.values())]
     if filtro:
+        # igualdade canônica (ou sufixo com separador) — substring deixaria
+        # "0-20" passar junto com "10-20"
         alvo = casamento.canonizar(filtro)
-        linhas = [ln for ln in linhas
-                  if any(alvo in casamento.canonizar(v) for v in ln.values())]
+
+        def bate(v):
+            c = casamento.canonizar(v)
+            return c == alvo or c.endswith('-' + alvo)
+
+        linhas = [ln for ln in linhas if any(bate(v) for v in ln.values())]
     if not linhas:
         raise SystemExit('laudo vazio (ou o --filtro-laudo não casou com nenhuma linha)')
     return linhas, colunas
@@ -122,6 +128,16 @@ def etapa_casamento(args, saida):
     ids_pontos = [str(p.get(campo_pontos, '')) for p in props]
     ids_laudo = [str(ln.get(col_laudo, '')) for ln in linhas]
     resultado = casamento.casar(ids_pontos, ids_laudo)
+
+    # laudo com MAIS DE UMA LINHA pro mesmo id (profundidade em coluna própria):
+    # sem filtro, a última linha venceria em silêncio — vira duplicata declarada
+    contagem = {}
+    for i in ids_laudo:
+        contagem[i] = contagem.get(i, 0) + 1
+    for i, vezes in contagem.items():
+        if vezes > 1:
+            resultado['duplicados_laudo'].setdefault(
+                casamento.canonizar(i), []).append(f'{i} ({vezes} linhas)')
 
     # pares manuais do usuário vencem qualquer camada
     for par in args.par or []:
@@ -202,7 +218,16 @@ def interpolar_elemento(ctx, elemento, args, saida):
 
     x0, y0, nx, ny, mascara, xc, yc = geometria.grade_e_mascara(
         ctx['aneis_utm'], pixel=args.pixel)
-    malha, _ = krigagem.krigar(x, y, z, vencedor, params, xc, yc, mascara)
+    celulas = int(mascara.sum())
+    print(f'  {elemento}: modelo {vencedor}, krigando {celulas:,} células '
+          f'({celulas * args.pixel**2 / 10000:,.0f} ha)…', flush=True)
+
+    def andamento(fracao):
+        print(f'\r  {elemento}: {fracao:5.1%}', end='', flush=True)
+
+    malha, _ = krigagem.krigar(x, y, z, vencedor, params, xc, yc, mascara,
+                               progresso=andamento)
+    print('\r', end='')
 
     negativos = int(np.nansum(malha < 0))
     if negativos:

@@ -37,17 +37,21 @@ def assinatura_numerica(s):
 def profundidade_de(s):
     """Detecta sufixo de profundidade: "T1 0-20cm" → ((0, 20), "T-1").
 
-    Heurística p/ não confundir com numeração de ponto ("T01-03" NÃO é
-    profundidade): os dois números finais precisam ser múltiplos de 5,
-    crescentes e com camada de 5–60 cm.
+    Heurística p/ não confundir com numeração de ponto ("T01-03" e "STC05-10"
+    NÃO são profundidade): os dois números finais precisam ser múltiplos de 5,
+    crescentes, com camada de 5–60 cm — e o que sobra do id ainda precisa ter
+    um número (id de ponto sem número algum é sinal de que os números finais
+    eram a numeração do próprio ponto, não uma camada).
     """
     tokens = canonizar(s).split('-')
     if tokens and tokens[-1] == 'CM':
         tokens = tokens[:-1]
     if len(tokens) >= 2 and tokens[-1].isdigit() and tokens[-2].isdigit():
         a, b = int(tokens[-2]), int(tokens[-1])
-        if a % 5 == 0 and b % 5 == 0 and 5 <= b - a <= 60 and b <= 100:
-            return (a, b), '-'.join(tokens[:-2])
+        resto = tokens[:-2]
+        if (a % 5 == 0 and b % 5 == 0 and 5 <= b - a <= 60 and b <= 100
+                and any(t.isdigit() for t in resto)):
+            return (a, b), '-'.join(resto)
     return None, '-'.join(tokens)
 
 
@@ -168,6 +172,12 @@ if __name__ == '__main__':
     r2 = casar(['T1', 'T2'], ['T1 0-20', 'T1 20-40', 'T2 0-20', 'T2 20-40'])
     assert set(r2['duplicados_laudo']) == {'T-1', 'T-2'}
     print('duplicados (profundidades) OK:', r2['duplicados_laudo'])
+
+    # "STC05-10" é talhão STC 05, ponto 10 — NÃO é camada 5-10 cm
+    assert profundidade_de('STC05-10') == (None, 'STC-5-10')
+    r3 = casar(['STC05-10', 'STC05-20'], ['stc5-10', 'stc5-20'])
+    assert not r3['duplicados_laudo'] and len(r3['pares']) == 2
+    print('falso-positivo de profundidade OK (STC05-10 casa normal)')
 
     campo, coluna, score = detectar_campos_id(
         [{'plot_id': 'T01-01', 'area': '12'}, {'plot_id': 'T01-02', 'area': '12'}],

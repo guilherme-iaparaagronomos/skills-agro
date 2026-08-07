@@ -274,9 +274,17 @@ def grade_e_mascara(aneis_utm, pixel=5.0, folga=1):
     gx, gy = np.meshgrid(xc, yc)
     centros = np.column_stack([gx.ravel(), gy.ravel()])
 
+    # paridade por anel, testando só as células dentro do bbox do anel —
+    # em fazendas com dezenas de talhões isso corta o custo em ordens de grandeza
     dentro = np.zeros(len(centros), dtype=bool)
     for anel in aneis_utm:
-        dentro ^= CaminhoMpl(anel).contains_points(centros)
+        axs = [p[0] for p in anel]
+        ays = [p[1] for p in anel]
+        cand = ((centros[:, 0] >= min(axs)) & (centros[:, 0] <= max(axs))
+                & (centros[:, 1] >= min(ays)) & (centros[:, 1] <= max(ays)))
+        idx = np.flatnonzero(cand)
+        if len(idx):
+            dentro[idx] ^= CaminhoMpl(anel).contains_points(centros[idx])
     return x_oeste, y_norte, nx, ny, dentro.reshape(ny, nx), xc, yc
 
 
