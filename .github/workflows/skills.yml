@@ -1,0 +1,51 @@
+# A cada mudança nas skills: regenera a tabela do README e reconstrói os zips
+# da release "latest" (é dela que o site e os READMEs linkam o download).
+# Skill nova = criar a pasta com SKILL.md e dar push — o resto é automático.
+name: Catálogo e release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'README.md' # o commit automático da tabela não redispara o workflow
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenera a tabela do README
+        run: python3 .github/scripts/tabela.py
+
+      - name: Commita o README se mudou
+        run: |
+          if ! git diff --quiet README.md; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "README: tabela de skills [auto]"
+            git push
+          fi
+
+      - name: Monta um zip por skill
+        run: |
+          mkdir -p /tmp/zips
+          for skill_md in */SKILL.md; do
+            slug="${skill_md%/SKILL.md}"
+            zip -r "/tmp/zips/$slug.zip" "$slug" -x "*__pycache__*"
+          done
+          ls -la /tmp/zips
+
+      - name: Atualiza a release "latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest /tmp/zips/*.zip \
+            --title "Skills — última versão" \
+            --notes "Zips gerados automaticamente a partir da main ($GITHUB_SHA). Um \`.zip\` por skill, pronto para instalar em claude.ai → Configurações → Capacidades → Skills."
