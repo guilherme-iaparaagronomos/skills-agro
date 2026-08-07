@@ -1,0 +1,38 @@
+name: Revisão técnica
+description: Um número, classe ou fórmula diverge do boletim — peça a correção citando a fonte.
+title: "[Revisão] "
+labels: ["revisão técnica"]
+body:
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Skill
+      options:
+        - 5a-aproximacao-mg (CFSEMG/MG)
+        - boletim-100-sp (IAC/SP)
+    validations:
+      required: true
+  - type: input
+    id: arquivo
+    attributes:
+      label: Arquivo
+      description: Qual arquivo tem o problema?
+      placeholder: "ex.: scripts/calagem.py ou references/culturas-grandes-culturas.md"
+    validations:
+      required: true
+  - type: textarea
+    id: divergencia
+    attributes:
+      label: O que está divergente
+      description: O valor/classe/fórmula que a skill dá hoje vs. o que deveria dar. Se veio de um laudo, cole os dados de entrada.
+      placeholder: "A skill calculou NC = 3,2 t/ha, mas pelo Quadro X o correto seria 2,8 t/ha porque..."
+    validations:
+      required: true
+  - type: input
+    id: fonte
+    attributes:
+      label: Fonte no boletim
+      description: Quadro e página que sustentam a correção — sem isso não conseguimos validar.
+      placeholder: "ex.: 5ª Aproximação, Quadro 8.2, p. 45"
+    validations:
+      required: true

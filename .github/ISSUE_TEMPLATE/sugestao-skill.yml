@@ -1,0 +1,27 @@
+name: Sugestão de skill nova
+description: Sugira uma nova skill agronômica (outro boletim estadual, manual de cultura, norma técnica).
+title: "[Sugestão] "
+labels: ["sugestão"]
+body:
+  - type: input
+    id: fonte
+    attributes:
+      label: Fonte oficial
+      description: Qual publicação a skill operacionalizaria?
+      placeholder: "ex.: Manual de calagem e adubação do RS/SC (CQFS, 2016)"
+    validations:
+      required: true
+  - type: textarea
+    id: escopo
+    attributes:
+      label: O que ela deveria calcular
+      description: Interpretação de laudo? Calagem? Adubação por cultura? Quais culturas importam mais?
+    validations:
+      required: true
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto de uso
+      description: Em que situação real do campo você usaria essa skill?
+    validations:
+      required: false
