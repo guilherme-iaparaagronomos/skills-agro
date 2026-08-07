@@ -120,10 +120,26 @@ def casar(ids_pontos, ids_laudo):
         usados_p.add(p)
         usados_l.add(l)
 
+    # material p/ a camada FINAL do casamento — o julgamento semântico do
+    # assistente (LLM) sobre os órfãos: top-3 candidatos por similaridade,
+    # mesmo abaixo do corte (quem decide é o assistente COM o usuário)
+    sem_par = [p for p in pontos if p not in usados_p]
+    sem_uso = [l for l in laudo if l not in usados_l]
+    sugestoes = {}
+    for p in sem_par:
+        ranque = sorted(
+            ((SequenceMatcher(None, canon_reduzido(p), canon_reduzido(l)).ratio(), l)
+             for l in sem_uso),
+            reverse=True,
+        )[:3]
+        if ranque:
+            sugestoes[p] = [{'laudo': l, 'similaridade': round(r, 2)} for r, l in ranque]
+
     return {
         'pares': pares,
-        'pontos_sem_par': [p for p in pontos if p not in usados_p],
-        'laudo_sem_uso': [l for l in laudo if l not in usados_l],
+        'pontos_sem_par': sem_par,
+        'laudo_sem_uso': sem_uso,
+        'sugestoes': sugestoes,
         'duplicados_laudo': duplicados,
     }
 

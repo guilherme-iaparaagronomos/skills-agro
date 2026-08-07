@@ -174,6 +174,7 @@ def resumo_casamento(ctx):
         'aproximados_para_confirmar': aprox,
         'pontos_sem_par': ctx['pontos_sem_par'],
         'laudo_sem_uso': ctx['laudo_sem_uso'],
+        'sugestoes_para_os_sem_par': ctx.get('sugestoes', {}),
         'duplicados_laudo': ctx['duplicados_laudo'],
     }
     if ctx['duplicados_laudo']:

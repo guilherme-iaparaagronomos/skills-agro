@@ -59,15 +59,21 @@ Coordenadas em metros (UTM) sem `.prj` exigem a zona: `--zona 22S`.
    --laudo laudo.csv --so-casamento --saida ./saida`
    O JSON de saída traz os campos de ID detectados, pares por confiança,
    pontos sem par e duplicatas.
-3. **Revise o casamento com o usuário**:
+3. **Revise o casamento — VOCÊ é a camada final**. O script resolve o grosso
+   deterministicamente (rápido, 1:1 garantido, auditável no casamento.csv);
+   o que sobra é pouco e pede julgamento semântico — o seu:
    - `duplicados_laudo` preenchido = laudo com mais de uma linha por ponto
      (profundidades 0-20/20-40). Pergunte qual usar e repita com
      `--filtro-laudo "0-20"`.
-   - `aproximados_para_confirmar` = mostre a tabela ponto ↔ laudo e confirme;
-     pares confirmados entram com `--par "PONTO=ID DO LAUDO"` (repetível).
-   - `pontos_sem_par`/`laudo_sem_uso` = mostre e pergunte (amostra perdida?
-     ponto extra?). Detecção de campo errada corrige-se com
-     `--id-pontos`/`--id-laudo`.
+   - `aproximados_para_confirmar` = mostre a tabela ponto ↔ laudo e confirme.
+   - `pontos_sem_par` = use `sugestoes_para_os_sem_par` (top-3 candidatos por
+     similaridade) + seu entendimento ("ponto quatro" = P4; O trocado por 0
+     no OCR; apelido de talhão) para PROPOR o par ao usuário. NUNCA decida
+     sozinho um par ambíguo: um casamento errado põe o valor na coordenada
+     errada e o mapa sai bonito e errado.
+   - Pares confirmados entram com `--par "PONTO=ID DO LAUDO"` (repetível) —
+     sua decisão vira registro auditável, não mágica.
+   - Detecção de campo errada corrige-se com `--id-pontos`/`--id-laudo`.
 4. **Etapa 2 — interpolação**:
    `python scripts/interpolar.py ... --elementos "P (mg/dm3),V (%)" --saida ./saida`
    (nomes exatamente como no cabeçalho do CSV; `todos` = todas as numéricas).
