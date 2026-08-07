@@ -70,6 +70,17 @@ células (resolvidas em blocos). A variância de krigagem é calculada (função
 - **GeoTIFF**: escrito em Python puro (float32, NoData −9999, ModelPixelScale
   + ModelTiepoint + GeoKeyDirectory com o EPSG) — QGIS/GDAL leem direto.
 
+## Vizinhança móvel (malhas grandes)
+
+Acima de 120 pontos a predição vira **krigagem local por ladrilho**: a grade
+é varrida em blocos de 64×64 células e cada bloco usa só os pontos dentro do
+seu bbox + buffer (máx. `--max-pontos`, os mais próximos do centro). O buffer
+padrão é max(0,75×alcance, 3×espaçamento da malha) — além dessa distância os
+pesos de krigagem são desprezíveis, então o resultado coincide com o global
+(teste embutido: diferença RMS ≪ desvio dos dados) com custo ~(n_local/n)².
+Bônus estatístico: em fazendas com dezenas de talhões, a vizinhança local
+exige estacionariedade só localmente — suposição mais honesta que a global.
+
 ## Limitações conhecidas (v1)
 
 - Isotropia assumida (sem variograma direcional/anisotropia).

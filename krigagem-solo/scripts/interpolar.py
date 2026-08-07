@@ -219,14 +219,23 @@ def interpolar_elemento(ctx, elemento, args, saida):
     x0, y0, nx, ny, mascara, xc, yc = geometria.grade_e_mascara(
         ctx['aneis_utm'], pixel=args.pixel)
     celulas = int(mascara.sum())
+    # vizinhança móvel: em malha grande o custo global é n²×células — o modo
+    # local usa só os vizinhos de cada ladrilho (buffer ~ alcance: sem emenda)
+    local = args.vizinhanca == 'local' or (args.vizinhanca == 'auto' and n > 120)
     print(f'  {elemento}: modelo {vencedor}, krigando {celulas:,} células '
-          f'({celulas * args.pixel**2 / 10000:,.0f} ha)…', flush=True)
+          f'({celulas * args.pixel**2 / 10000:,.0f} ha)'
+          f'{" · vizinhança móvel" if local else ""}…', flush=True)
 
     def andamento(fracao):
         print(f'\r  {elemento}: {fracao:5.1%}', end='', flush=True)
 
-    malha, _ = krigagem.krigar(x, y, z, vencedor, params, xc, yc, mascara,
-                               progresso=andamento)
+    if local:
+        malha, _ = krigagem.krigar_local(x, y, z, vencedor, params, xc, yc,
+                                         mascara, max_pontos=args.max_pontos,
+                                         progresso=andamento)
+    else:
+        malha, _ = krigagem.krigar(x, y, z, vencedor, params, xc, yc, mascara,
+                                   progresso=andamento)
     print('\r', end='')
 
     negativos = int(np.nansum(malha < 0))
@@ -240,7 +249,8 @@ def interpolar_elemento(ctx, elemento, args, saida):
         saida / f'{nome}.png', malha, x0, y0, args.pixel,
         ctx['aneis_utm'], list(zip(x.tolist(), y.tolist())),
         titulo=elemento,
-        subtitulo=(f'krigagem ordinária · pixel {args.pixel:g} m · modelo {vencedor} '
+        subtitulo=(f'krigagem ordinária{" (vizinhança móvel)" if local else ""} · '
+                   f'pixel {args.pixel:g} m · modelo {vencedor} '
                    f'(RMSE LOO {rmse:.3g}) · n={n} · SIRGAS 2000 UTM {ctx["zona"]}'),
         unidade=elemento, cmap=args.cmap,
     )
@@ -262,6 +272,7 @@ def interpolar_elemento(ctx, elemento, args, saida):
         'media': round(float(z.mean()), 4), 'modelos': escolha['modelos'],
         'vencedor': vencedor, 'dependencia_espacial': escolha['dependencia_espacial'],
         'razao_pepita': escolha['razao_pepita'],
+        'vizinhanca': 'local' if local else 'global',
         'arquivos': [f'{nome}.tif', f'{nome}.png'], 'avisos': aviso,
     }
 
@@ -284,6 +295,10 @@ def principal(argv=None):
                    help='casamento manual confirmado pelo usuário (repetível)')
     p.add_argument('--cmap', default='RdYlGn',
                    help='RdYlGn (alto=verde) | RdYlGn_r p/ Al, m%% (alto=ruim)')
+    p.add_argument('--vizinhanca', choices=['auto', 'global', 'local'], default='auto',
+                   help='auto: local acima de 120 pontos (malha grande)')
+    p.add_argument('--max-pontos', type=int, default=96,
+                   help='pontos por vizinhança no modo local')
     p.add_argument('--so-casamento', action='store_true',
                    help='só casa os IDs e mostra o resultado (etapa 1)')
     p.add_argument('--demo', action='store_true', help='roda um exemplo sintético completo')

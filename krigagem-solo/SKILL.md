@@ -84,7 +84,13 @@ Coordenadas em metros (UTM) sem `.prj` exigem a zona: `--zona 22S`.
 
 ## Detalhes fixos da implementação
 
-- Pixel padrão **5 m** (`--pixel` muda se o usuário pedir).
+- Pixel padrão **5 m** (`--pixel` muda se o usuário pedir). Em fazenda grande
+  com malha larga (~1 ponto/ha), avise que `--pixel 10` ou `20` roda muito
+  mais rápido sem perder conteúdo agronômico — mas a decisão é do usuário.
+- **Vizinhança móvel automática** acima de 120 pontos (`--vizinhanca`,
+  `--max-pontos`): cada ladrilho da grade usa só os pontos vizinhos (buffer da
+  ordem do alcance do variograma) — malhas de centenas de pontos em milhares
+  de hectares rodam em segundos, sem emenda visível entre ladrilhos.
 - Projeção alvo: **UTM / SIRGAS 2000** (zona automática; EPSG no relatório).
 - Ajuste do variograma: mínimos quadrados ponderados (Cressie, Np/h²), corte
   em metade da distância máxima, alcance por varredura (sem otimizador

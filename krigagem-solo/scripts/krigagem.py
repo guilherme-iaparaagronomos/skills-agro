@@ -236,6 +236,78 @@ def krigar(x, y, z, nome, params, xc, yc, mascara, bloco=20000, progresso=None):
     return pred.reshape(ny, nx), varkrig.reshape(ny, nx)
 
 
+def krigar_local(x, y, z, nome, params, xc, yc, mascara, lado_tile=64,
+                 max_pontos=96, buffer_m=None, progresso=None):
+    """Krigagem ordinária com VIZINHANÇA MÓVEL por ladrilho — p/ malhas grandes.
+
+    A grade é varrida em ladrilhos de lado_tile×lado_tile células; cada
+    ladrilho usa só os pontos num raio de buffer_m do seu bbox (no máximo
+    max_pontos, os mais próximos do centro). Com buffer na casa do alcance do
+    variograma, os pesos dos pontos excluídos seriam desprezíveis — o
+    resultado é praticamente o da krigagem global, com custo ~n_local²/n².
+    Devolve (malha_predita, malha_variancia) como krigar().
+    """
+    import math
+
+    x, y, z = (np.asarray(v, dtype=float) for v in (x, y, z))
+    n = len(x)
+    g = _gamma(nome, params)
+    xc = np.asarray(xc, float)
+    yc = np.asarray(yc, float)
+    ny, nx = mascara.shape
+
+    if buffer_m is None:
+        # espaçamento médio da malha (raiz da área por ponto) e alcance mandam
+        area = max((x.max() - x.min()) * (y.max() - y.min()), 1.0)
+        espacamento = math.sqrt(area / n)
+        buffer_m = max(0.75 * params[2], 3 * espacamento)
+
+    pred = np.full(ny * nx, np.nan)
+    varkrig = np.full(ny * nx, np.nan)
+    indice = np.arange(ny * nx).reshape(ny, nx)
+    total = int(mascara.sum())
+    feitos = 0
+
+    for i0 in range(0, ny, lado_tile):
+        for j0 in range(0, nx, lado_tile):
+            sub = mascara[i0:i0 + lado_tile, j0:j0 + lado_tile]
+            m_alvos = int(sub.sum())
+            if not m_alvos:
+                continue
+            xs = xc[j0:j0 + lado_tile]
+            ys = yc[i0:i0 + lado_tile]
+            cx, cy = xs.mean(), ys.mean()
+
+            sel = ((x >= xs.min() - buffer_m) & (x <= xs.max() + buffer_m)
+                   & (y >= ys.min() - buffer_m) & (y <= ys.max() + buffer_m))
+            pts = np.flatnonzero(sel)
+            if len(pts) < 8:  # ladrilho isolado: usa os mais próximos do centro
+                pts = np.argsort(np.hypot(x - cx, y - cy))[:min(max(16, 8), n)]
+            elif len(pts) > max_pontos:
+                ordem = np.argsort(np.hypot(x[pts] - cx, y[pts] - cy))
+                pts = pts[ordem[:max_pontos]]
+
+            xl, yl, zl = x[pts], y[pts], z[pts]
+            nl = len(pts)
+            fator = lu_factor(_matriz_aumentada(xl, yl, g))
+
+            gx, gy = np.meshgrid(xs, ys)
+            dentro = sub.ravel()
+            ax, ay = gx.ravel()[dentro], gy.ravel()[dentro]
+            d = np.hypot(xl[:, None] - ax[None, :], yl[:, None] - ay[None, :])
+            b = np.vstack([g(d), np.ones((1, m_alvos))])
+            lam = lu_solve(fator, b)
+
+            destino = indice[i0:i0 + lado_tile, j0:j0 + lado_tile].ravel()[dentro]
+            pred[destino] = lam[:nl].T @ zl
+            varkrig[destino] = np.einsum('ij,ij->j', lam[:nl], b[:nl]) + lam[nl]
+            feitos += m_alvos
+            if progresso:
+                progresso(feitos / total)
+
+    return pred.reshape(ny, nx), varkrig.reshape(ny, nx)
+
+
 def remover_duplicados(x, y, z, tolerancia=0.01):
     """Pontos na MESMA coordenada (±tolerância em m) viram um só (média de z)."""
     x, y, z = (np.asarray(v, dtype=float) for v in (x, y, z))
@@ -291,4 +363,11 @@ if __name__ == '__main__':
     col = int((x[i] - 0) // 5)
     print(f'no ponto mais central: z={z[i]:.2f} malha={malha[lin, col]:.2f}')
     assert abs(malha[lin, col] - z[i]) < 1.0
-    print('krigagem OK — malha', malha.shape)
+
+    # vizinhança móvel ≈ global (max_pontos apertado de propósito p/ exercitar
+    # a seleção; a diferença tem que ser marginal perto do desvio dos dados)
+    local, _ = krigar_local(x, y, z, resultado['vencedor'], params, xc, yc,
+                            mascara, lado_tile=24, max_pontos=24)
+    dif = float(np.sqrt(np.nanmean((local - malha) ** 2)))
+    assert dif < 0.05 * np.std(z), dif
+    print(f'krigagem OK — malha {malha.shape} | local≈global (dif RMS {dif:.4f})')
