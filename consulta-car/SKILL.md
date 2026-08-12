@@ -43,7 +43,8 @@ Use `scripts/consultar_car.py` (só biblioteca padrão, Python 3.9+, precisa
 de internet):
 
 ```bash
-# um CAR (imprime JSON com todos os campos)
+# um CAR: imprime o JSON com todos os campos E JÁ SALVA o perímetro em
+# <CAR>.geojson (não precisa pedir o shape num 2º passo)
 python scripts/consultar_car.py "PI-2200053-1BAB.C06A.E224.43BC.A804.FFEC.51C2.5EB9"
 
 # planilha: detecta a coluna do CAR pelo cabeçalho, PREENCHE só as células
@@ -51,23 +52,46 @@ python scripts/consultar_car.py "PI-2200053-1BAB.C06A.E224.43BC.A804.FFEC.51C2.5
 python scripts/consultar_car.py fazendas.xlsx
 python scripts/consultar_car.py lista.csv -o resultado.csv
 
-# opções: --decimal (lat/long em graus decimais) · --sobrescrever (reconsulta tudo)
+# opções: --decimal (lat/long decimais) · --sobrescrever (reconsulta tudo)
+#         --sem-feicao (não baixar o perímetro na consulta de 1 CAR)
 ```
+
+**ENTREGUE O SHAPE JUNTO, não ofereça.** Ao consultar **um** CAR, o script
+já salva o perímetro (`feicao_geojson` no JSON) — apresente os dados E
+entregue o arquivo GeoJSON ao usuário na mesma resposta. Não pergunte "quer
+o shape?": traga. (Só pule com `--sem-feicao`, ou quando o usuário disser
+que não quer.) Para **planilha** de vários CARs, o script NÃO baixa um shape
+por linha (seria pesado) — aí sim confirme com o usuário quais imóveis
+devem ter o perímetro baixado (via `baixar_feicao.py`).
 
 O leitor/escritor de XLSX é embutido (sem openpyxl): lê a primeira aba e
 escreve um arquivo válido para Excel/Sheets. CSV aceita `;` ou `,`.
 O script pausa 0,5 s entre consultas (gentileza com o servidor público) e
 reporta linha a linha o que não encontrou ou está inválido.
 
-## Caminho 2 — sem ambiente de execução com rede (chat)
+## Caminho 2 — ambiente sem internet (sandbox do chat)
 
-Se você (IA) não puder rodar o script com acesso à internet, faça a
-consulta VOCÊ MESMO com sua ferramenta de busca/fetch de URL: monte a URL
-da API acima com o número normalizado (pode manter os pontos) e leia o
-JSON. Para poucos CARs (até ~15), repita por número e monte a tabela na
-resposta. Para planilhas grandes, oriente o usuário a rodar o script no
-Claude Code/Cowork — iterar dezenas de fetches no chat é lento e sujeito a
-limite.
+A sandbox de código do **chat (claude.ai)** só alcança uma lista fechada de
+hosts (pypi, github…); `consulta.car.gov.br` NÃO está nela, então o script
+recebe **`403 host_not_allowed`** e o fetch de URL também falha. Isso é
+limite do ambiente, não da skill — e ela trata assim:
+
+1. **Preenchimento OFFLINE (sempre roda)**: o código IBGE do município está
+   embutido no número do CAR (os 7 dígitos após a UF). Com
+   `references/municipios_ibge.tsv` (5.571 municípios), o script preenche
+   **município, estado e UF sem tocar a rede** — e marca a linha como
+   PARCIAL. Só latitude, longitude, área e módulos fiscais exigem a API.
+2. Se você (IA) TIVER uma ferramenta de fetch que alcance o site (algumas
+   alcançam mesmo com a sandbox bloqueada), monte a URL da API com o número
+   normalizado e leia o JSON — assim completa os campos que faltam. Para
+   poucos CARs (até ~15).
+3. Se nada alcançar o site, **diga ao usuário com todas as letras**: os
+   dados geográficos só vêm da base oficial e este ambiente bloqueia o
+   acesso — rode a skill no **Claude Code** ou no **Cowork** (internet
+   real), onde ela funciona ponta a ponta. Não invente lat/long/área.
+
+O script já faz tudo isso: em bloqueio ele preenche o que dá offline, avisa
+o motivo e sai com código 3 (único) ou reporta "N PARCIAL(is)" (planilha).
 
 ## Caminho 3 — último recurso (navegador)
 

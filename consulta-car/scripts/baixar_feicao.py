@@ -28,9 +28,9 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-# reaproveita normalização/validação do consultar_car
+# reaproveita normalização/validação/bloqueio do consultar_car
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from consultar_car import normalizar_car  # noqa: E402
+from consultar_car import BloqueioDeRede, MSG_SEM_REDE, _eh_bloqueio, normalizar_car  # noqa: E402
 
 WFS = "https://consulta.car.gov.br/geoserver/consulta_publica/ows"
 UA = "Mozilla/5.0 (compatible; consulta-car-skill/1.0; uso educacional)"
@@ -62,6 +62,8 @@ def wfs_geojson(camada: str, car: str) -> dict:
             with urllib.request.urlopen(req, timeout=45) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except Exception as e:
+            if _eh_bloqueio(e):
+                raise BloqueioDeRede(MSG_SEM_REDE) from e
             if tentativa == 2:
                 raise RuntimeError(f"WFS falhou em '{camada}': {e}")
             time.sleep(1.5 * (tentativa + 1))
@@ -92,7 +94,11 @@ def main() -> None:
         sys.exit(f"CAR inválido: {args.car!r}")
 
     # perímetro (sempre)
-    perimetro = wfs_geojson(CAMADA_PERIMETRO, car)
+    try:
+        perimetro = wfs_geojson(CAMADA_PERIMETRO, car)
+    except BloqueioDeRede as e:
+        sys.exit(f"{e}\n(o download da feição EXIGE rede — não há como derivar o "
+                 f"polígono offline; rode no Claude Code ou no Cowork)")
     feats = perimetro.get("features", [])
     if not feats:
         sys.exit(f"CAR não encontrado no acervo geográfico: {car}")

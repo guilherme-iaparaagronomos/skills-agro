@@ -28,6 +28,7 @@ import re
 import sys
 import time
 import unicodedata
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -43,6 +44,26 @@ TENTATIVAS = 3
 # 8 grupos de 4 no formato pontuado do site)
 RE_CAR = re.compile(r"^[A-Z]{2}-\d{7}-[0-9A-F]{32}$")
 
+MSG_SEM_REDE = (
+    "o site do CAR (consulta.car.gov.br) NÃO é acessível a partir deste "
+    "ambiente — a sandbox de código do chat bloqueia hosts externos "
+    "(403 host_not_allowed). Rode esta skill no CLAUDE CODE ou no COWORK, "
+    "que têm internet real; ou peça à IA para consultar a API pela própria "
+    "ferramenta de busca/fetch dela."
+)
+
+
+class BloqueioDeRede(RuntimeError):
+    """Ambiente sem saída para a internet (sandbox do chat) — não adianta tentar de novo."""
+
+
+def _eh_bloqueio(erro: Exception) -> bool:
+    if isinstance(erro, urllib.error.HTTPError) and erro.code == 403:
+        cabecalho = str(getattr(erro, "headers", "") or "")
+        return "host_not_allowed" in cabecalho or "host_not_allowed" in str(erro)
+    # DNS/egress totalmente bloqueado costuma vir como URLError
+    return isinstance(erro, urllib.error.URLError) and not isinstance(erro, urllib.error.HTTPError)
+
 
 # ---------------------------------------------------------------- consulta
 def normalizar_car(texto: str) -> str | None:
@@ -52,7 +73,8 @@ def normalizar_car(texto: str) -> str | None:
 
 
 def consultar(car: str) -> dict | None:
-    """Consulta um CAR normalizado. None = não encontrado; levanta em erro de rede."""
+    """Consulta um CAR normalizado. None = não encontrado.
+    Levanta BloqueioDeRede (ambiente sem internet) ou RuntimeError (5xx/timeout)."""
     url = API.format(car=car)
     ultimo_erro: Exception | None = None
     for tentativa in range(TENTATIVAS):
@@ -63,10 +85,58 @@ def consultar(car: str) -> dict | None:
             if not corpo:
                 return None  # CAR inexistente: a API devolve 200 vazio
             return json.loads(corpo)
-        except Exception as e:  # rede/5xx: espera e tenta de novo
-            ultimo_erro = e
+        except Exception as e:
+            if _eh_bloqueio(e):
+                raise BloqueioDeRede(MSG_SEM_REDE) from e  # sem retry: não vai mudar
+            ultimo_erro = e  # 5xx/timeout do gov.br: espera e tenta de novo
             time.sleep(1.5 * (tentativa + 1))
     raise RuntimeError(f"falha ao consultar {car}: {ultimo_erro}")
+
+
+# --------------------------------------------- resolução OFFLINE (sem rede)
+# o código IBGE do município está EMBUTIDO no número do CAR: os 7 dígitos
+# após a UF. Com a tabela oficial (references/municipios_ibge.tsv), dá para
+# preencher município e estado SEM acessar o SICAR — útil quando o ambiente
+# bloqueia a internet (ex.: sandbox do chat). Lat/long/área ainda exigem a
+# API, mas 2 colunas já saem de graça e o resultado é auditável.
+COD_UF = {
+    "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA", "16": "AP",
+    "17": "TO", "21": "MA", "22": "PI", "23": "CE", "24": "RN", "25": "PB",
+    "26": "PE", "27": "AL", "28": "SE", "29": "BA", "31": "MG", "32": "ES",
+    "33": "RJ", "35": "SP", "41": "PR", "42": "SC", "43": "RS", "50": "MS",
+    "51": "MT", "52": "GO", "53": "DF",
+}
+NOME_UF = {
+    "AC": "Acre", "AL": "Alagoas", "AP": "Amapá", "AM": "Amazonas",
+    "BA": "Bahia", "CE": "Ceará", "DF": "Distrito Federal", "ES": "Espírito Santo",
+    "GO": "Goiás", "MA": "Maranhão", "MT": "Mato Grosso", "MS": "Mato Grosso do Sul",
+    "MG": "Minas Gerais", "PA": "Pará", "PB": "Paraíba", "PR": "Paraná",
+    "PE": "Pernambuco", "PI": "Piauí", "RJ": "Rio de Janeiro",
+    "RN": "Rio Grande do Norte", "RS": "Rio Grande do Sul", "RO": "Rondônia",
+    "RR": "Roraima", "SC": "Santa Catarina", "SP": "São Paulo", "SE": "Sergipe",
+    "TO": "Tocantins",
+}
+_TABELA_IBGE: dict[str, tuple[str, str]] | None = None
+
+
+def _carregar_ibge() -> dict[str, tuple[str, str]]:
+    global _TABELA_IBGE
+    if _TABELA_IBGE is None:
+        _TABELA_IBGE = {}
+        arq = Path(__file__).resolve().parent.parent / "references" / "municipios_ibge.tsv"
+        if arq.exists():
+            for linha in arq.read_text(encoding="utf-8").splitlines():
+                partes = linha.split("\t")
+                if len(partes) >= 3:
+                    _TABELA_IBGE[partes[0]] = (partes[1], partes[2])
+    return _TABELA_IBGE
+
+
+def resolver_offline(car: str) -> dict:
+    """Município/estado/UF a partir do código IBGE embutido no número do CAR."""
+    cod = car.split("-")[1] if "-" in car else ""
+    nome, uf = _carregar_ibge().get(cod, ("", COD_UF.get(cod[:2], "")))
+    return {"municipio": nome, "uf": uf, "estado": NOME_UF.get(uf, "")}
 
 
 def dms_para_decimal(dms: str) -> float | None:
@@ -288,6 +358,9 @@ def preencher_planilha(caminho: Path, saida: Path | None, decimal: bool, sobresc
     linhas[0] = cabecalho
 
     total = preenchidos = pulados = nao_encontrados = invalidos = 0
+    parciais = 0  # preenchidos só com o que dá offline (rede bloqueada)
+    sem_rede = False  # uma vez bloqueado, não insiste no resto da planilha
+    campos_offline = {"municipio", "uf", "estado"}
     for numero_linha, linha in enumerate(linhas[1:], start=2):
         while len(linha) < len(cabecalho):
             linha.append("")
@@ -305,7 +378,27 @@ def preencher_planilha(caminho: Path, saida: Path | None, decimal: bool, sobresc
         if not alvo:
             pulados += 1  # já estava completa
             continue
-        dados = consultar(car)
+
+        # preenche município/estado/UF do próprio número (offline, sempre)
+        offline = resolver_offline(car)
+        for i in alvo:
+            if destino[i] in campos_offline and offline.get(destino[i]):
+                linha[i] = offline[destino[i]]
+
+        # o resto (lat/long/área/módulos) exige a API
+        falta_api = [i for i in alvo if destino[i] not in campos_offline]
+        if sem_rede:
+            parciais += 1
+            continue
+        if not falta_api:
+            preenchidos += 1
+            continue
+        try:
+            dados = consultar(car)
+        except BloqueioDeRede:
+            sem_rede = True
+            parciais += 1
+            continue
         time.sleep(PAUSA_S)
         if dados is None:
             nao_encontrados += 1
@@ -322,10 +415,17 @@ def preencher_planilha(caminho: Path, saida: Path | None, decimal: bool, sobresc
         escrever_xlsx(saida, linhas)
     else:
         escrever_csv(saida, linhas)
-    print(
-        f"{saida.name}: {total} CAR(s) — {preenchidos} preenchido(s), "
-        f"{pulados} já completo(s), {nao_encontrados} não encontrado(s), {invalidos} inválido(s)"
+    resumo = (
+        f"{saida.name}: {total} CAR(s) — {preenchidos} completo(s), "
+        f"{pulados} já preenchido(s), {nao_encontrados} não encontrado(s), {invalidos} inválido(s)"
     )
+    if parciais:
+        resumo += f", {parciais} PARCIAL(is) (só município/estado)"
+    print(resumo)
+    if sem_rede:
+        print(f"\nAVISO: {MSG_SEM_REDE}\nMunicípio e estado foram preenchidos "
+              f"offline pelo código IBGE do número; lat/long e área ficaram em "
+              f"branco — rode no Claude Code/Cowork para completar.", file=sys.stderr)
 
 
 # -------------------------------------------------------------------- main
@@ -335,6 +435,8 @@ def main() -> None:
     ap.add_argument("-o", "--saida", help="arquivo de saída (planilha)")
     ap.add_argument("--decimal", action="store_true", help="lat/long em graus decimais")
     ap.add_argument("--sobrescrever", action="store_true", help="reconsulta até células já preenchidas")
+    ap.add_argument("--sem-feicao", action="store_true",
+                    help="NÃO baixar o perímetro (por padrão, 1 CAR já vem com o GeoJSON)")
     args = ap.parse_args()
 
     caminho = Path(args.entrada)
@@ -345,10 +447,55 @@ def main() -> None:
     car = normalizar_car(args.entrada)
     if not car:
         sys.exit(f"CAR inválido: {args.entrada!r} (esperado UF-1234567-32 caracteres hex)")
-    dados = consultar(car)
+    try:
+        dados = consultar(car)
+    except BloqueioDeRede:
+        # sem internet: entrega o que dá do próprio número e explica
+        off = resolver_offline(car)
+        print(json.dumps({
+            "car": car,
+            "municipio": off["municipio"],
+            "estado": off["estado"],
+            "uf": off["uf"],
+            "latitude": None,
+            "longitude": None,
+            "area_ha": None,
+            "modulos_fiscais": None,
+            "_parcial": True,
+            "_aviso": MSG_SEM_REDE,
+        }, ensure_ascii=False, indent=2))
+        sys.exit(3)
     if dados is None:
         sys.exit(f"CAR não encontrado no SICAR: {car}")
     r = linha_resultado(dados, args.decimal)
+
+    # PADRÃO (2026-08-12): consultar 1 CAR já traz o PERÍMETRO junto — o
+    # usuário não deve precisar pedir o shape num 2º passo. Salva
+    # <CAR>.geojson ao lado; --sem-feicao desliga.
+    feicao_path: str | None = None
+    if not args.sem_feicao:
+        try:
+            from baixar_feicao import wfs_geojson  # mesmo diretório
+
+            perimetro = wfs_geojson("iru", car)
+            feats = perimetro.get("features", [])
+            if feats:
+                for f in feats:
+                    f.setdefault("properties", {})["camada"] = "perimetro_imovel"
+                destino = Path(f"{car}.geojson")
+                destino.write_text(
+                    json.dumps(
+                        {"type": "FeatureCollection",
+                         "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::4674"}},
+                         "features": feats},
+                        ensure_ascii=False,
+                    ),
+                    encoding="utf-8",
+                )
+                feicao_path = str(destino)
+        except Exception as e:  # feição é um bônus: falha aqui não derruba a consulta
+            print(f"(perímetro não baixado: {e})", file=sys.stderr)
+
     print(json.dumps({
         "car": dados.get("codeProperty", car),
         "municipio": r["municipio"],
@@ -360,7 +507,11 @@ def main() -> None:
         "modulos_fiscais": r["modulos"],
         "data_cadastro": r["cadastro"],
         "bounding_box": dados.get("bounderBox", ""),
+        "feicao_geojson": feicao_path,  # perímetro salvo (SIRGAS 2000) ou null
     }, ensure_ascii=False, indent=2))
+    if feicao_path:
+        print(f"\nperímetro salvo em {feicao_path} (GeoJSON SIRGAS 2000 — pronto p/ QGIS)",
+              file=sys.stderr)
 
 
 if __name__ == "__main__":
