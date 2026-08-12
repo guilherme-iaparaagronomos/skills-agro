@@ -47,8 +47,8 @@ de internet):
 # <CAR>.geojson (não precisa pedir o shape num 2º passo)
 python scripts/consultar_car.py "PI-2200053-1BAB.C06A.E224.43BC.A804.FFEC.51C2.5EB9"
 
-# planilha: detecta a coluna do CAR pelo cabeçalho, PREENCHE só as células
-# vazias e salva <nome>-preenchida.csv/.xlsx (colunas que faltarem são criadas)
+# planilha: PREENCHE as células vazias E salva os perímetros de TODOS os
+# CARs juntos (<nome>-perimetros .geojson/.zip/.kml) — não precisa pedir
 python scripts/consultar_car.py fazendas.xlsx
 python scripts/consultar_car.py lista.csv -o resultado.csv
 
@@ -56,14 +56,22 @@ python scripts/consultar_car.py lista.csv -o resultado.csv
 #         --sem-feicao (não baixar o perímetro na consulta de 1 CAR)
 ```
 
-**ENTREGUE O SHAPE JUNTO, não ofereça.** Ao consultar **um** CAR, o script
-já salva o perímetro nos **três formatos** (`feicoes` no JSON: GeoJSON +
-Shapefile `.zip` + KML) — apresente os dados E entregue os arquivos ao
-usuário na mesma resposta. Não pergunte "quer o shape?": traga os três.
-(Só pule com `--sem-feicao`, ou quando o usuário disser que não quer.) Para
-**planilha** de vários CARs, o script NÃO baixa um shape por linha (seria
-pesado) — aí sim confirme com o usuário quais imóveis devem ter o perímetro
-baixado (via `baixar_feicao.py`, que também sai nos três formatos).
+**ENTREGUE OS PERÍMETROS JUNTO, SEMPRE — não ofereça, não pergunte.** Vale
+para os DOIS modos:
+
+- **Um CAR**: o script salva o perímetro nos três formatos (`feicoes` no
+  JSON: GeoJSON + Shapefile `.zip` + KML). Apresente os dados E entregue os
+  três arquivos na mesma resposta.
+- **Planilha**: além da planilha preenchida, o script gera
+  `<nome>-perimetros.geojson`, `-perimetros-shapefile.zip` e
+  `-perimetros.kml` com **todos os imóveis num arquivo só por formato**
+  (abre tudo de uma vez no QGIS). Entregue a planilha E esses arquivos —
+  não espere o usuário pedir.
+
+NUNCA responda só com os dados e deixe o shape para um segundo pedido. Se o
+usuário não quiser as feições, ele avisa (ou use `--sem-feicao`). Só há um
+caso em que os perímetros não vêm: ambiente sem internet (sandbox do chat)
+— aí avise que o download exige rede.
 
 O leitor/escritor de XLSX é embutido (sem openpyxl): lê a primeira aba e
 escreve um arquivo válido para Excel/Sheets. CSV aceita `;` ou `,`.

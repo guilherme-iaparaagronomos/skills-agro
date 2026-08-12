@@ -333,7 +333,9 @@ def escrever_xlsx(caminho: Path, linhas: list[list[str]]) -> None:
 
 
 # ---------------------------------------------------------------- planilha
-def preencher_planilha(caminho: Path, saida: Path | None, decimal: bool, sobrescrever: bool) -> None:
+def preencher_planilha(
+    caminho: Path, saida: Path | None, decimal: bool, sobrescrever: bool, feicoes: bool = True
+) -> None:
     ehxlsx = caminho.suffix.lower() == ".xlsx"
     linhas = ler_xlsx(caminho) if ehxlsx else ler_csv(caminho)
     if not linhas:
@@ -361,6 +363,13 @@ def preencher_planilha(caminho: Path, saida: Path | None, decimal: bool, sobresc
     parciais = 0  # preenchidos só com o que dá offline (rede bloqueada)
     sem_rede = False  # uma vez bloqueado, não insiste no resto da planilha
     campos_offline = {"municipio", "uf", "estado"}
+    perimetros: list[dict] = []  # feições de todos os CARs (saída combinada)
+    baixar_perimetro = None
+    if feicoes:
+        try:
+            from baixar_feicao import wfs_geojson as baixar_perimetro  # noqa: F401
+        except Exception:
+            baixar_perimetro = None
     for numero_linha, linha in enumerate(linhas[1:], start=2):
         while len(linha) < len(cabecalho):
             linha.append("")
@@ -409,6 +418,21 @@ def preencher_planilha(caminho: Path, saida: Path | None, decimal: bool, sobresc
             linha[i] = str(resultado.get(destino[i], ""))
         preenchidos += 1
 
+        # perímetro do imóvel (WFS) — acumula p/ a saída combinada
+        if baixar_perimetro is not None:
+            try:
+                fc = baixar_perimetro("iru", car)
+                for f in fc.get("features", []):
+                    props = f.setdefault("properties", {})
+                    props["camada"] = "perimetro_imovel"
+                    props.setdefault("cod_imovel", car)
+                    perimetros.append(f)
+                time.sleep(PAUSA_S)
+            except BloqueioDeRede:
+                sem_rede = True
+            except Exception as e:
+                print(f"  linha {numero_linha}: perímetro não baixado: {e}", file=sys.stderr)
+
     if saida is None:
         saida = caminho.with_name(f"{caminho.stem}-preenchida{caminho.suffix}")
     if saida.suffix.lower() == ".xlsx":
@@ -422,6 +446,25 @@ def preencher_planilha(caminho: Path, saida: Path | None, decimal: bool, sobresc
     if parciais:
         resumo += f", {parciais} PARCIAL(is) (só município/estado)"
     print(resumo)
+
+    # perímetros de TODOS os CARs num só arquivo por formato (GeoJSON +
+    # Shapefile + KML) ao lado da planilha — pronto p/ abrir no QGIS de uma vez
+    if perimetros:
+        colecao = {"type": "FeatureCollection",
+                   "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::4674"}},
+                   "features": perimetros}
+        base = saida.with_name(f"{saida.stem}-perimetros")
+        gj = base.with_suffix(".geojson")
+        gj.write_text(json.dumps(colecao, ensure_ascii=False), encoding="utf-8")
+        gerados = [gj]
+        try:
+            from converter import converter as _converter
+            gerados += _converter(gj, base, {"shp", "kml"})
+        except Exception as e:
+            print(f"(conversão shp/kml falhou: {e})", file=sys.stderr)
+        print(f"perímetros ({len(perimetros)} imóvel(is)) — SIRGAS 2000:")
+        for g in gerados:
+            print(f"  {g}")
     if sem_rede:
         print(f"\nAVISO: {MSG_SEM_REDE}\nMunicípio e estado foram preenchidos "
               f"offline pelo código IBGE do número; lat/long e área ficaram em "
@@ -441,7 +484,10 @@ def main() -> None:
 
     caminho = Path(args.entrada)
     if caminho.suffix.lower() in (".csv", ".xlsx") and caminho.exists():
-        preencher_planilha(caminho, Path(args.saida) if args.saida else None, args.decimal, args.sobrescrever)
+        preencher_planilha(
+            caminho, Path(args.saida) if args.saida else None,
+            args.decimal, args.sobrescrever, feicoes=not args.sem_feicao,
+        )
         return
 
     car = normalizar_car(args.entrada)
