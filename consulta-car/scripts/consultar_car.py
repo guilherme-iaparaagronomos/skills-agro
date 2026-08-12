@@ -469,21 +469,22 @@ def main() -> None:
         sys.exit(f"CAR não encontrado no SICAR: {car}")
     r = linha_resultado(dados, args.decimal)
 
-    # PADRÃO (2026-08-12): consultar 1 CAR já traz o PERÍMETRO junto — o
-    # usuário não deve precisar pedir o shape num 2º passo. Salva
-    # <CAR>.geojson ao lado; --sem-feicao desliga.
-    feicao_path: str | None = None
+    # PADRÃO (2026-08-12): consultar 1 CAR já traz o PERÍMETRO junto, nos 3
+    # formatos (GeoJSON + Shapefile + KML) — o usuário não pede o shape num
+    # 2º passo. Arquivos ao lado; --sem-feicao desliga.
+    feicoes_geradas: list[str] = []
     if not args.sem_feicao:
         try:
             from baixar_feicao import wfs_geojson  # mesmo diretório
+            from converter import converter as _converter
 
             perimetro = wfs_geojson("iru", car)
             feats = perimetro.get("features", [])
             if feats:
                 for f in feats:
                     f.setdefault("properties", {})["camada"] = "perimetro_imovel"
-                destino = Path(f"{car}.geojson")
-                destino.write_text(
+                gj = Path(f"{car}.geojson")
+                gj.write_text(
                     json.dumps(
                         {"type": "FeatureCollection",
                          "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::4674"}},
@@ -492,7 +493,8 @@ def main() -> None:
                     ),
                     encoding="utf-8",
                 )
-                feicao_path = str(destino)
+                feicoes_geradas.append(str(gj))
+                feicoes_geradas += [str(p) for p in _converter(gj, gj.with_suffix(""), {"shp", "kml"})]
         except Exception as e:  # feição é um bônus: falha aqui não derruba a consulta
             print(f"(perímetro não baixado: {e})", file=sys.stderr)
 
@@ -507,11 +509,12 @@ def main() -> None:
         "modulos_fiscais": r["modulos"],
         "data_cadastro": r["cadastro"],
         "bounding_box": dados.get("bounderBox", ""),
-        "feicao_geojson": feicao_path,  # perímetro salvo (SIRGAS 2000) ou null
+        "feicoes": feicoes_geradas,  # perímetro em GeoJSON + Shapefile(.zip) + KML
     }, ensure_ascii=False, indent=2))
-    if feicao_path:
-        print(f"\nperímetro salvo em {feicao_path} (GeoJSON SIRGAS 2000 — pronto p/ QGIS)",
-              file=sys.stderr)
+    if feicoes_geradas:
+        print("\nperímetro salvo (SIRGAS 2000, pronto p/ QGIS/Earth):", file=sys.stderr)
+        for p in feicoes_geradas:
+            print(f"  {p}", file=sys.stderr)
 
 
 if __name__ == "__main__":

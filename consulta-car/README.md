@@ -20,10 +20,12 @@ fiscais e data de cadastro** — um número de cada vez no chat, ou uma
 - Degrada com elegância: sem ambiente de execução com rede, o playbook
   instrui a IA a fazer o fetch da API diretamente; sem rede nenhuma, traz o
   passo a passo do site para navegação assistida.
-- **Feição do imóvel (polígono) SEM captcha**: `scripts/baixar_feicao.py`
-  puxa o perímetro em GeoJSON do WFS público do SICAR (filtro por
-  `cod_imovel`) — roda sozinho, sem clique, e ainda traz status/situação
-  do cadastro e camadas temáticas (reserva legal, APP, vegetação nativa).
+- **Feição do imóvel (polígono) SEM captcha, nos 3 formatos**:
+  `scripts/baixar_feicao.py` puxa o perímetro do WFS público do SICAR
+  (filtro por `cod_imovel`) e entrega **GeoJSON + Shapefile + KML** — roda
+  sozinho, sem clique, e ainda traz status/situação do cadastro e camadas
+  temáticas (reserva legal, APP, vegetação nativa). Consultar 1 CAR já vem
+  com os três arquivos juntos.
   Fallback: baixar o shapefile oficial pelo site (aí com reCAPTCHA que o
   **usuário** resolve — a skill nunca burla) e resumir com
   `scripts/feicoes.py`. Ambos entregam perímetro pronto para o QGIS e para
@@ -36,8 +38,10 @@ fiscais e data de cadastro** — um número de cada vez no chat, ou uma
 - `scripts/consultar_car.py` — CLI: `python consultar_car.py <CAR>` ou
   `python consultar_car.py planilha.xlsx` (`--decimal` para lat/long em
   graus decimais, `--sobrescrever` para reconsultar tudo).
-- `scripts/baixar_feicao.py` — baixa o polígono do imóvel em GeoJSON via
-  WFS oficial, sem captcha (`--temas` para camadas do cadastro).
+- `scripts/baixar_feicao.py` — baixa o polígono do imóvel via WFS oficial,
+  sem captcha, em **GeoJSON + Shapefile + KML** (`--temas` para camadas).
+- `scripts/converter.py` — converte um GeoJSON em Shapefile (.zip) e KML em
+  Python puro, sem GDAL (SIRGAS 2000).
 - `scripts/feicoes.py` — fallback: extrai e resume o zip de shapefile
   baixado do site (temas, geometria, bbox, perímetro AREA_IMOVEL).
 - `references/api-sicar.md` — detalhes do endpoint (campos da resposta,

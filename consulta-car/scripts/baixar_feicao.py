@@ -87,6 +87,10 @@ def main() -> None:
         help="camadas temáticas além do perímetro: lista separada por vírgula, "
         "ou 'todos' para varrer as comuns (arl, vegetação, área consolidada...)",
     )
+    ap.add_argument(
+        "--formatos", default="geojson,shp,kml",
+        help="formatos de saída: geojson, shp, kml (padrão: os três)",
+    )
     args = ap.parse_args()
 
     car = normalizar_car(args.car)
@@ -130,9 +134,27 @@ def main() -> None:
     saida = Path(args.saida) if args.saida else Path(f"{car}.geojson")
     colecao = {"type": "FeatureCollection", "crs": {"type": "name",
               "properties": {"name": "urn:ogc:def:crs:EPSG::4674"}}, "features": todas}
-    saida.write_text(json.dumps(colecao, ensure_ascii=False), encoding="utf-8")
-    print(f"{saida}: {len(todas)} feição(ões) — SIRGAS 2000 (EPSG:4674)")
-    print("  → abre no QGIS e serve de perímetro p/ a skill krigagem-solo")
+    formatos = {f.strip().lower() for f in args.formatos.split(",") if f.strip()}
+
+    gerados = []
+    if "geojson" in formatos:
+        saida.write_text(json.dumps(colecao, ensure_ascii=False), encoding="utf-8")
+        gerados.append(saida)
+    if formatos & {"shp", "shapefile", "kml"}:
+        from converter import converter as _converter  # mesmo diretório
+
+        # escreve um geojson temporário se o usuário não pediu geojson
+        tmp = saida if "geojson" in formatos else saida.with_suffix(".tmp.geojson")
+        if "geojson" not in formatos:
+            tmp.write_text(json.dumps(colecao, ensure_ascii=False), encoding="utf-8")
+        gerados += _converter(tmp, saida.with_suffix(""), formatos)
+        if "geojson" not in formatos:
+            tmp.unlink(missing_ok=True)
+
+    print(f"{len(todas)} feição(ões) — SIRGAS 2000 (EPSG:4674):")
+    for g in gerados:
+        print(f"  {g}")
+    print("  → abre no QGIS/Earth e serve de perímetro p/ a skill krigagem-solo")
 
 
 if __name__ == "__main__":

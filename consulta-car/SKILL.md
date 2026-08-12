@@ -57,12 +57,13 @@ python scripts/consultar_car.py lista.csv -o resultado.csv
 ```
 
 **ENTREGUE O SHAPE JUNTO, não ofereça.** Ao consultar **um** CAR, o script
-já salva o perímetro (`feicao_geojson` no JSON) — apresente os dados E
-entregue o arquivo GeoJSON ao usuário na mesma resposta. Não pergunte "quer
-o shape?": traga. (Só pule com `--sem-feicao`, ou quando o usuário disser
-que não quer.) Para **planilha** de vários CARs, o script NÃO baixa um shape
-por linha (seria pesado) — aí sim confirme com o usuário quais imóveis
-devem ter o perímetro baixado (via `baixar_feicao.py`).
+já salva o perímetro nos **três formatos** (`feicoes` no JSON: GeoJSON +
+Shapefile `.zip` + KML) — apresente os dados E entregue os arquivos ao
+usuário na mesma resposta. Não pergunte "quer o shape?": traga os três.
+(Só pule com `--sem-feicao`, ou quando o usuário disser que não quer.) Para
+**planilha** de vários CARs, o script NÃO baixa um shape por linha (seria
+pesado) — aí sim confirme com o usuário quais imóveis devem ter o perímetro
+baixado (via `baixar_feicao.py`, que também sai nos três formatos).
 
 O leitor/escritor de XLSX é embutido (sem openpyxl): lê a primeira aba e
 escreve um arquivo válido para Excel/Sheets. CSV aceita `;` ou `,`.
@@ -110,19 +111,25 @@ legítima. É o **caminho preferido** (roda em qualquer ambiente com Python
 e rede, sem clique nenhum):
 
 ```bash
-# perímetro do imóvel em GeoJSON (SIRGAS 2000)
+# perímetro do imóvel — sai em GeoJSON + Shapefile(.zip) + KML (padrão)
 python scripts/baixar_feicao.py "PI-2200053-1BAB.C06A.E224.43BC.A804.FFEC.51C2.5EB9"
 
-# com camadas temáticas do cadastro (reserva legal, vegetação nativa...)
+# escolher formatos / camadas temáticas do cadastro
+python scripts/baixar_feicao.py <CAR> --formatos geojson,kml
 python scripts/baixar_feicao.py <CAR> --temas arl_averbada,vegetacao_nativa
 python scripts/baixar_feicao.py <CAR> --temas todos   # varre as comuns
+
+# converter um GeoJSON já baixado (ex.: veio do chat) em shapefile + kml
+python scripts/converter.py area.geojson
 ```
 
 Por baixo: `GET .../geoserver/consulta_publica/ows` (WFS 2.0, GetFeature,
 `cql_filter=cod_imovel='<CAR>'`, `outputFormat=application/json`). A camada
 `iru` é o perímetro; as demais (`arl_*`, `vegetacao_nativa`,
-`area_consolidada`, `app_*` etc.) filtram pelo mesmo campo. O GeoJSON abre
-direto no QGIS e serve de **perímetro para a skill `krigagem-solo`**.
+`area_consolidada`, `app_*` etc.) filtram pelo mesmo campo. A conversão
+(`converter.py`) é **Python puro** (sem GDAL): escreve Shapefile
+(.shp/.shx/.dbf/.prj num .zip) e KML, tudo em SIRGAS 2000. Abre direto no
+QGIS/Google Earth e serve de **perímetro para a skill `krigagem-solo`**.
 Detalhes das camadas em `references/api-sicar.md`.
 
 ## Fallback — baixar o SHAPEFILE oficial pelo site (com captcha)
