@@ -77,31 +77,41 @@ CAR"** (canto direito do bloco "Confira as áreas cadastradas"), clique em
 **Buscar** e leia o bloco **"Dados do imóvel rural"** no fim da página
 (município, UF, lat/long, área, módulos fiscais).
 
-## Baixar o SHAPE do imóvel (feições) — fluxo assistido com captcha
+## Baixar a FEIÇÃO do imóvel (polígono) — SEM captcha, via WFS oficial
 
-O site também entrega um **zip com os shapefiles do cadastro** (perímetro
-AREA_IMOVEL + demais feições declaradas), mas o download é protegido por
-**reCAPTCHA — e captcha é para HUMANO resolver**. A skill automatiza tudo
-ao redor e devolve o clique ao usuário:
+O botão "Baixar feições" do site empacota um shapefile atrás de um
+reCAPTCHA, mas o MESMO dado geográfico está no **GeoServer público do
+SICAR** — filtrável pelo código do imóvel numa requisição pública
+legítima. É o **caminho preferido** (roda em qualquer ambiente com Python
+e rede, sem clique nenhum):
 
-1. Precisa de **browser automation** (Claude Code com Playwright/Chrome,
-   Cowork com navegador). Sem navegador, oriente o usuário a baixar
-   manualmente no site e siga do passo 5.
-2. Abra https://consulta.car.gov.br/, preencha o **"Número de registro no
-   CAR"**, clique **Buscar** e aguarde o painel "Detalhes da pesquisa".
-3. Clique **"Baixar feições"** (há também "Baixar demonstrativo", o PDF).
-   Um reCAPTCHA "Não sou um robô" aparece no próprio painel.
-4. **PARE e peça ao usuário**: "clique no 'Não sou um robô' (e resolva as
-   imagens, se pedir) — eu continuo daqui". NUNCA tente resolver, burlar ou
-   automatizar o captcha — nem com serviços externos; é a proteção do site
-   e a skill respeita.
-5. Com o zip baixado, rode `scripts/feicoes.py <arquivo>.zip`: ele extrai,
-   lista os temas (tipo de geometria, nº de registros, bbox) e aponta o
-   perímetro (AREA_IMOVEL) — pronto para o QGIS e para a skill
-   `krigagem-solo` (entrada de perímetro).
-6. Em lote, o captcha limita o ritmo por natureza (1 clique por imóvel) —
-   combine com o usuário quais imóveis valem o download em vez de
-   atropelar.
+```bash
+# perímetro do imóvel em GeoJSON (SIRGAS 2000)
+python scripts/baixar_feicao.py "PI-2200053-1BAB.C06A.E224.43BC.A804.FFEC.51C2.5EB9"
+
+# com camadas temáticas do cadastro (reserva legal, vegetação nativa...)
+python scripts/baixar_feicao.py <CAR> --temas arl_averbada,vegetacao_nativa
+python scripts/baixar_feicao.py <CAR> --temas todos   # varre as comuns
+```
+
+Por baixo: `GET .../geoserver/consulta_publica/ows` (WFS 2.0, GetFeature,
+`cql_filter=cod_imovel='<CAR>'`, `outputFormat=application/json`). A camada
+`iru` é o perímetro; as demais (`arl_*`, `vegetacao_nativa`,
+`area_consolidada`, `app_*` etc.) filtram pelo mesmo campo. O GeoJSON abre
+direto no QGIS e serve de **perímetro para a skill `krigagem-solo`**.
+Detalhes das camadas em `references/api-sicar.md`.
+
+## Fallback — baixar o SHAPEFILE oficial pelo site (com captcha)
+
+Só quando o usuário precisar do **pacote shapefile idêntico ao do site**
+(ou o WFS estiver fora). Aí o download tem reCAPTCHA, que é **para HUMANO
+resolver** — a skill NUNCA burla, resolve ou terceiriza captcha:
+
+1. Requer navegador (Claude Code/Cowork). Abra o site, preencha o CAR,
+   **Buscar**, e no painel "Detalhes" clique **"Baixar feições"**.
+2. **PARE e peça ao usuário**: "clique no 'Não sou um robô' — eu sigo daqui".
+3. Com o zip baixado, `scripts/feicoes.py <arquivo>.zip` extrai e resume os
+   temas (geometria, registros, bbox) e aponta o perímetro AREA_IMOVEL.
 
 ## Regras de resposta
 

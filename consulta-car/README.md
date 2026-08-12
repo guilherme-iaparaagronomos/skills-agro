@@ -20,10 +20,14 @@ fiscais e data de cadastro** — um número de cada vez no chat, ou uma
 - Degrada com elegância: sem ambiente de execução com rede, o playbook
   instrui a IA a fazer o fetch da API diretamente; sem rede nenhuma, traz o
   passo a passo do site para navegação assistida.
-- **Download do shape (feições)**: fluxo assistido em que a IA navega até o
-  botão "Baixar feições" e o **usuário resolve o reCAPTCHA** (a skill nunca
-  burla captcha); `scripts/feicoes.py` extrai o zip, resume os temas e
-  aponta o perímetro — pronto para o QGIS e para a skill `krigagem-solo`.
+- **Feição do imóvel (polígono) SEM captcha**: `scripts/baixar_feicao.py`
+  puxa o perímetro em GeoJSON do WFS público do SICAR (filtro por
+  `cod_imovel`) — roda sozinho, sem clique, e ainda traz status/situação
+  do cadastro e camadas temáticas (reserva legal, APP, vegetação nativa).
+  Fallback: baixar o shapefile oficial pelo site (aí com reCAPTCHA que o
+  **usuário** resolve — a skill nunca burla) e resumir com
+  `scripts/feicoes.py`. Ambos entregam perímetro pronto para o QGIS e para
+  a skill `krigagem-solo`.
 
 ## Estrutura
 
@@ -32,8 +36,10 @@ fiscais e data de cadastro** — um número de cada vez no chat, ou uma
 - `scripts/consultar_car.py` — CLI: `python consultar_car.py <CAR>` ou
   `python consultar_car.py planilha.xlsx` (`--decimal` para lat/long em
   graus decimais, `--sobrescrever` para reconsultar tudo).
-- `scripts/feicoes.py` — extrai e resume o zip de feições baixado do site
-  (temas, geometria, bbox, perímetro AREA_IMOVEL).
+- `scripts/baixar_feicao.py` — baixa o polígono do imóvel em GeoJSON via
+  WFS oficial, sem captcha (`--temas` para camadas do cadastro).
+- `scripts/feicoes.py` — fallback: extrai e resume o zip de shapefile
+  baixado do site (temas, geometria, bbox, perímetro AREA_IMOVEL).
 - `references/api-sicar.md` — detalhes do endpoint (campos da resposta,
   formato do número, comportamento de erro).
 

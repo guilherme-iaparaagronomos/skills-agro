@@ -58,6 +58,35 @@ GET https://consulta.car.gov.br/api/totalizer/getDeatilsByIdentifier/<NUMERO>
 | Número mal formado | 200 vazio ou 500 — valide ANTES de chamar |
 | Instabilidade do gov.br | 5xx/timeout — tente de novo com espera |
 
+## WFS — feição vetorial do imóvel (sem captcha)
+
+O GeoServer público do SICAR serve as camadas do cadastro por WFS,
+filtráveis pelo código do imóvel. É a fonte do polígono real (o botão
+"Baixar feições" do site é o MESMO dado, só que empacotado em shapefile
+atrás de reCAPTCHA):
+
+```
+GET https://consulta.car.gov.br/geoserver/consulta_publica/ows
+    ?service=WFS&version=2.0.0&request=GetFeature
+    &typeName=consulta_publica:iru
+    &outputFormat=application/json&srsName=EPSG:4674
+    &cql_filter=cod_imovel='PI-2200053-1BABC06AE22443BCA804FFEC51C25EB9'
+```
+
+- Campo de filtro: **`cod_imovel`** (número normalizado, sem pontos).
+- CRS nativo: **EPSG:4674 (SIRGAS 2000)**.
+- Camada `iru` = perímetro do imóvel. Propriedades úteis que a API de
+  totalizer NÃO traz: `status_imovel` (AT/…), `situacao_analise`,
+  `bioma`, `tipo_imovel`, sobreposições (`sobreposicao_area_indigena`,
+  `_unidade_conservacao`, `_area_embargada`, …).
+- Camadas temáticas (mesmo filtro `cod_imovel`): `arl_averbada`,
+  `arl_aprovada_nao_averbada`, `arl_proposta` (reserva legal),
+  `vegetacao_nativa`, `area_consolidada`, `area_pousio`, `ast`, e a família
+  `app_*` (áreas de preservação permanente).
+- `GetCapabilities` lista tudo:
+  `.../ows?service=WFS&version=2.0.0&request=GetCapabilities`
+- `DescribeFeatureType&typeName=consulta_publica:<camada>` traz os campos.
+
 ## Endpoints vizinhos (não usados pela skill, úteis p/ evoluções)
 
 - `GET /api/state/getAll` — lista de UFs
