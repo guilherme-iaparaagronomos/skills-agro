@@ -132,6 +132,15 @@ def _carregar_ibge() -> dict[str, tuple[str, str]]:
     return _TABELA_IBGE
 
 
+def colecao_de(feats: list[dict]) -> dict:
+    """FeatureCollection SIRGAS 2000 a partir das feições de UM imóvel."""
+    return {
+        "type": "FeatureCollection",
+        "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::4674"}},
+        "features": feats,
+    }
+
+
 def resolver_offline(car: str) -> dict:
     """Município/estado/UF a partir do código IBGE embutido no número do CAR."""
     cod = car.split("-")[1] if "-" in car else ""
@@ -363,7 +372,8 @@ def preencher_planilha(
     parciais = 0  # preenchidos só com o que dá offline (rede bloqueada)
     sem_rede = False  # uma vez bloqueado, não insiste no resto da planilha
     campos_offline = {"municipio", "uf", "estado"}
-    perimetros: list[dict] = []  # feições de todos os CARs (saída combinada)
+    # feições POR CAR (2026-08-13: um arquivo por imóvel, nunca tudo junto)
+    perimetros: dict[str, list[dict]] = {}
     baixar_perimetro = None
     if feicoes:
         try:
@@ -426,7 +436,7 @@ def preencher_planilha(
                     props = f.setdefault("properties", {})
                     props["camada"] = "perimetro_imovel"
                     props.setdefault("cod_imovel", car)
-                    perimetros.append(f)
+                    perimetros.setdefault(car, []).append(f)
                 time.sleep(PAUSA_S)
             except BloqueioDeRede:
                 sem_rede = True
@@ -447,24 +457,20 @@ def preencher_planilha(
         resumo += f", {parciais} PARCIAL(is) (só município/estado)"
     print(resumo)
 
-    # perímetros de TODOS os CARs num só arquivo por formato (GeoJSON +
-    # Shapefile + KML) ao lado da planilha — pronto p/ abrir no QGIS de uma vez
+    # perímetros: UM ARQUIVO POR CAR, em zips por formato (geojson/shp/kml)
     if perimetros:
-        colecao = {"type": "FeatureCollection",
-                   "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::4674"}},
-                   "features": perimetros}
-        base = saida.with_name(f"{saida.stem}-perimetros")
-        gj = base.with_suffix(".geojson")
-        gj.write_text(json.dumps(colecao, ensure_ascii=False), encoding="utf-8")
-        gerados = [gj]
         try:
-            from converter import converter as _converter
-            gerados += _converter(gj, base, {"shp", "kml"})
+            from converter import zips_por_car
+
+            gerados = zips_por_car(
+                {car: colecao_de(feats) for car, feats in perimetros.items()},
+                saida.with_name(f"{saida.stem}-perimetros"),
+            )
+            print(f"perímetros ({len(perimetros)} imóvel(is), 1 arquivo por CAR) — SIRGAS 2000:")
+            for g in gerados:
+                print(f"  {g}")
         except Exception as e:
-            print(f"(conversão shp/kml falhou: {e})", file=sys.stderr)
-        print(f"perímetros ({len(perimetros)} imóvel(is)) — SIRGAS 2000:")
-        for g in gerados:
-            print(f"  {g}")
+            print(f"(empacotamento dos perímetros falhou: {e})", file=sys.stderr)
     if sem_rede:
         print(f"\nAVISO: {MSG_SEM_REDE}\nMunicípio e estado foram preenchidos "
               f"offline pelo código IBGE do número; lat/long e área ficaram em "
@@ -472,27 +478,106 @@ def preencher_planilha(
 
 
 # -------------------------------------------------------------------- main
+def consultar_varios(cars: list[str], decimal: bool, feicoes: bool) -> None:
+    """VÁRIOS CARs no chat (2026-08-13): tabela/JSON com todos + perímetros
+    com UM ARQUIVO POR CAR, empacotados em zips por formato."""
+    resultados: list[dict] = []
+    por_car: dict[str, list[dict]] = {}
+    baixar = None
+    if feicoes:
+        try:
+            from baixar_feicao import wfs_geojson as baixar  # noqa: F401
+        except Exception:
+            baixar = None
+
+    for entrada in cars:
+        car = normalizar_car(entrada)
+        if not car:
+            resultados.append({"car": entrada, "erro": "número inválido"})
+            continue
+        try:
+            dados = consultar(car)
+        except BloqueioDeRede:
+            off = resolver_offline(car)
+            resultados.append({"car": car, **off, "_parcial": True, "_aviso": MSG_SEM_REDE})
+            continue
+        if dados is None:
+            resultados.append({"car": car, "erro": "não encontrado no SICAR"})
+            continue
+        r = linha_resultado(dados, decimal)
+        resultados.append({
+            "car": dados.get("codeProperty", car),
+            "municipio": r["municipio"], "estado": r["estado"], "uf": r["uf"],
+            "latitude": r["latitude"], "longitude": r["longitude"],
+            "area_ha": r["area"], "modulos_fiscais": r["modulos"],
+            "data_cadastro": r["cadastro"],
+        })
+        time.sleep(PAUSA_S)
+        if baixar is not None:
+            try:
+                fc = baixar("iru", car)
+                for f in fc.get("features", []):
+                    props = f.setdefault("properties", {})
+                    props["camada"] = "perimetro_imovel"
+                    props.setdefault("cod_imovel", car)
+                    por_car.setdefault(car, []).append(f)
+                time.sleep(PAUSA_S)
+            except Exception as e:
+                print(f"  {car}: perímetro não baixado: {e}", file=sys.stderr)
+
+    gerados: list[str] = []
+    if por_car:
+        try:
+            from converter import zips_por_car
+
+            gerados = [
+                str(p)
+                for p in zips_por_car(
+                    {car: colecao_de(feats) for car, feats in por_car.items()},
+                    Path("cars-perimetros"),
+                )
+            ]
+        except Exception as e:
+            print(f"(empacotamento dos perímetros falhou: {e})", file=sys.stderr)
+
+    print(json.dumps({"consultas": resultados, "feicoes": gerados}, ensure_ascii=False, indent=2))
+    if gerados:
+        print(
+            f"\nperímetros de {len(por_car)} imóvel(is) — 1 arquivo por CAR dentro de cada zip:",
+            file=sys.stderr,
+        )
+        for g in gerados:
+            print(f"  {g}", file=sys.stderr)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Consulta pública do CAR (SICAR)")
-    ap.add_argument("entrada", help="número do CAR OU caminho de planilha .csv/.xlsx")
+    ap.add_argument("entrada", nargs="+",
+                    help="um ou VÁRIOS números de CAR, OU o caminho de uma planilha .csv/.xlsx")
     ap.add_argument("-o", "--saida", help="arquivo de saída (planilha)")
     ap.add_argument("--decimal", action="store_true", help="lat/long em graus decimais")
     ap.add_argument("--sobrescrever", action="store_true", help="reconsulta até células já preenchidas")
     ap.add_argument("--sem-feicao", action="store_true",
-                    help="NÃO baixar o perímetro (por padrão, 1 CAR já vem com o GeoJSON)")
+                    help="NÃO baixar os perímetros (por padrão já vêm junto)")
     args = ap.parse_args()
 
-    caminho = Path(args.entrada)
-    if caminho.suffix.lower() in (".csv", ".xlsx") and caminho.exists():
+    primeira = args.entrada[0]
+    caminho = Path(primeira)
+    if len(args.entrada) == 1 and caminho.suffix.lower() in (".csv", ".xlsx") and caminho.exists():
         preencher_planilha(
             caminho, Path(args.saida) if args.saida else None,
             args.decimal, args.sobrescrever, feicoes=not args.sem_feicao,
         )
         return
 
-    car = normalizar_car(args.entrada)
+    # VÁRIOS CARs: mesma regra da planilha (1 arquivo por CAR, em zips)
+    if len(args.entrada) > 1:
+        consultar_varios(args.entrada, args.decimal, feicoes=not args.sem_feicao)
+        return
+
+    car = normalizar_car(primeira)
     if not car:
-        sys.exit(f"CAR inválido: {args.entrada!r} (esperado UF-1234567-32 caracteres hex)")
+        sys.exit(f"CAR inválido: {primeira!r} (esperado UF-1234567-32 caracteres hex)")
     try:
         dados = consultar(car)
     except BloqueioDeRede:

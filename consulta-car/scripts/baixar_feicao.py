@@ -78,9 +78,66 @@ def contar_vertices(coords) -> int:
     return sum(contar_vertices(c) for c in coords)
 
 
+def baixar_varios(
+    cars: list[str], temas: str | None, formatos: set[str], prefixo: str | None
+) -> None:
+    """Vários CARs: cada imóvel vira um ARQUIVO PRÓPRIO, empacotado em zips
+    por formato (regra do fundador 2026-08-13 — nunca tudo junto)."""
+    lista_temas = (
+        TEMAS_COMUNS
+        if (temas or "").strip().lower() == "todos"
+        else [t.strip() for t in (temas or "").split(",") if t.strip()]
+    )
+    por_car: dict[str, dict] = {}
+    for entrada in cars:
+        car = normalizar_car(entrada)
+        if not car:
+            print(f"  {entrada}: CAR inválido", file=sys.stderr)
+            continue
+        try:
+            fc = wfs_geojson(CAMADA_PERIMETRO, car)
+        except BloqueioDeRede as e:
+            sys.exit(str(e))
+        except RuntimeError as e:
+            print(f"  {car}: {e}", file=sys.stderr)
+            continue
+        feats = fc.get("features", [])
+        if not feats:
+            print(f"  {car}: não encontrado no acervo geográfico", file=sys.stderr)
+            continue
+        for f in feats:
+            f.setdefault("properties", {})["camada"] = "perimetro_imovel"
+        time.sleep(0.4)
+        for tema in lista_temas:
+            try:
+                r = wfs_geojson(tema, car)
+            except RuntimeError:
+                continue
+            time.sleep(0.4)
+            for f in r.get("features", []):
+                f.setdefault("properties", {})["camada"] = tema
+                feats.append(f)
+        por_car[car] = {
+            "type": "FeatureCollection",
+            "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::4674"}},
+            "features": feats,
+        }
+        print(f"  {car}: {len(feats)} feição(ões)")
+
+    if not por_car:
+        sys.exit("nenhum CAR encontrado")
+    from converter import zips_por_car
+
+    base = Path(prefixo) if prefixo else Path("cars-perimetros")
+    gerados = zips_por_car(por_car, base, formatos)
+    print(f"{len(por_car)} imóvel(is) — 1 arquivo por CAR dentro de cada zip:")
+    for g in gerados:
+        print(f"  {g}")
+
+
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Baixa a feição (polígono) de um CAR via WFS")
-    ap.add_argument("car", help="número do CAR")
+    ap = argparse.ArgumentParser(description="Baixa a feição (polígono) de um ou vários CARs via WFS")
+    ap.add_argument("car", nargs="+", help="um ou VÁRIOS números de CAR")
     ap.add_argument("-o", "--saida", help="arquivo .geojson de saída")
     ap.add_argument(
         "--temas",
@@ -93,9 +150,16 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    car = normalizar_car(args.car)
+    formatos_pedidos = {f.strip().lower() for f in args.formatos.split(",") if f.strip()}
+
+    # VÁRIOS CARs (2026-08-13): um arquivo POR CAR, em zips por formato
+    if len(args.car) > 1:
+        baixar_varios(args.car, args.temas, formatos_pedidos, args.saida)
+        return
+
+    car = normalizar_car(args.car[0])
     if not car:
-        sys.exit(f"CAR inválido: {args.car!r}")
+        sys.exit(f"CAR inválido: {args.car[0]!r}")
 
     # perímetro (sempre)
     try:
@@ -134,7 +198,7 @@ def main() -> None:
     saida = Path(args.saida) if args.saida else Path(f"{car}.geojson")
     colecao = {"type": "FeatureCollection", "crs": {"type": "name",
               "properties": {"name": "urn:ogc:def:crs:EPSG::4674"}}, "features": todas}
-    formatos = {f.strip().lower() for f in args.formatos.split(",") if f.strip()}
+    formatos = formatos_pedidos
 
     gerados = []
     if "geojson" in formatos:

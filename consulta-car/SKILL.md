@@ -43,30 +43,43 @@ Use `scripts/consultar_car.py` (só biblioteca padrão, Python 3.9+, precisa
 de internet):
 
 ```bash
-# um CAR: imprime o JSON com todos os campos E JÁ SALVA o perímetro em
-# <CAR>.geojson (não precisa pedir o shape num 2º passo)
+# um CAR: JSON com todos os campos + perímetro nos 3 formatos
 python scripts/consultar_car.py "PI-2200053-1BAB.C06A.E224.43BC.A804.FFEC.51C2.5EB9"
 
-# planilha: PREENCHE as células vazias E salva os perímetros de TODOS os
-# CARs juntos (<nome>-perimetros .geojson/.zip/.kml) — não precisa pedir
+# VÁRIOS CARs (o usuário colou uma lista no chat) — 1 arquivo POR CAR
+python scripts/consultar_car.py "PI-2200053-1BAB..." "PE-2606309-8C20..."
+
+# planilha: PREENCHE as células vazias E salva os perímetros (1 por CAR)
 python scripts/consultar_car.py fazendas.xlsx
 python scripts/consultar_car.py lista.csv -o resultado.csv
 
 # opções: --decimal (lat/long decimais) · --sobrescrever (reconsulta tudo)
-#         --sem-feicao (não baixar o perímetro na consulta de 1 CAR)
+#         --sem-feicao (não baixar os perímetros)
 ```
 
 **ENTREGUE OS PERÍMETROS JUNTO, SEMPRE — não ofereça, não pergunte.** Vale
-para os DOIS modos:
+para os TRÊS modos:
 
 - **Um CAR**: o script salva o perímetro nos três formatos (`feicoes` no
-  JSON: GeoJSON + Shapefile `.zip` + KML). Apresente os dados E entregue os
-  três arquivos na mesma resposta.
-- **Planilha**: além da planilha preenchida, o script gera
-  `<nome>-perimetros.geojson`, `-perimetros-shapefile.zip` e
-  `-perimetros.kml` com **todos os imóveis num arquivo só por formato**
-  (abre tudo de uma vez no QGIS). Entregue a planilha E esses arquivos —
-  não espere o usuário pedir.
+  JSON: `<CAR>.geojson` + `<CAR>-shapefile.zip` + `<CAR>.kml`). Apresente
+  os dados E entregue os três arquivos na mesma resposta.
+- **Vários CARs no chat** e **planilha**: mesma regra — ver abaixo.
+
+### UM ARQUIVO POR CAR (decisão do fundador 2026-08-13)
+
+Com **mais de um** CAR — seja lista no chat, seja planilha — cada imóvel
+vira um arquivo PRÓPRIO (nada de tudo junto numa coleção só), empacotados
+em **um zip por formato**:
+
+```
+<base>-geojson.zip     → PI-2200053-....geojson · PE-2606309-....geojson
+<base>-shapefile.zip   → cada CAR com seu .shp/.shx/.dbf/.prj
+<base>-kml.zip         → PI-2200053-....kml · PE-2606309-....kml
+```
+
+`<base>` é `cars-perimetros` (lista no chat) ou `<planilha>-preenchida-perimetros`
+(modo planilha). Entregue TODOS os zips gerados — e, no modo planilha, a
+planilha preenchida junto.
 
 NUNCA responda só com os dados e deixe o shape para um segundo pedido. Se o
 usuário não quiser as feições, ele avisa (ou use `--sem-feicao`). Só há um

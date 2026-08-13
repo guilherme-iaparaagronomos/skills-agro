@@ -15,6 +15,10 @@ fiscais e data de cadastro** — um número de cada vez no chat, ou uma
   células vazias (nunca sobrescreve o que o usuário já tem), cria as
   colunas que faltarem e devolve `<nome>-preenchida.xlsx/.csv` com um
   relatório do que foi preenchido, não encontrado ou está inválido.
+- **Vários CARs (lista no chat ou planilha)**: cada imóvel vira um arquivo
+  PRÓPRIO, empacotado em um zip por formato — `-geojson.zip`,
+  `-shapefile.zip` (com o conjunto .shp/.shx/.dbf/.prj de cada CAR) e
+  `-kml.zip`. Nada de tudo junto num arquivo só.
 - Leitor e escritor de **XLSX embutidos** — o script roda com a biblioteca
   padrão do Python (3.9+), sem nenhuma dependência.
 - Degrada com elegância: sem ambiente de execução com rede, o playbook
@@ -39,7 +43,8 @@ fiscais e data de cadastro** — um número de cada vez no chat, ou uma
   `python consultar_car.py planilha.xlsx` (`--decimal` para lat/long em
   graus decimais, `--sobrescrever` para reconsultar tudo).
 - `scripts/baixar_feicao.py` — baixa o polígono do imóvel via WFS oficial,
-  sem captcha, em **GeoJSON + Shapefile + KML** (`--temas` para camadas).
+  sem captcha, em **GeoJSON + Shapefile + KML** (`--temas` para camadas);
+  aceita **vários CARs** de uma vez.
 - `scripts/converter.py` — converte um GeoJSON em Shapefile (.zip) e KML em
   Python puro, sem GDAL (SIRGAS 2000).
 - `scripts/feicoes.py` — fallback: extrai e resume o zip de shapefile

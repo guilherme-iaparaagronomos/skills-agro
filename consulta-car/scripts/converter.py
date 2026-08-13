@@ -18,6 +18,7 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import json
 import struct
 import sys
 import zipfile
@@ -130,7 +131,10 @@ def _dbf(campos: list[str], registros: list[list[str]]) -> bytes:
     return out
 
 
-def geojson_para_shapefile_zip(colecao: dict, base: Path) -> Path:
+def shapefile_partes(colecao: dict) -> dict[str, bytes]:
+    """Os 4 arquivos do shapefile (.shp/.shx/.dbf/.prj) em MEMÓRIA — quem
+    chama decide se grava em disco ou empacota num zip (útil p/ montar um
+    zip com um shapefile POR CAR)."""
     feicoes = [f for f in colecao.get("features", []) if _aneis(f["geometry"])]
     if not feicoes:
         raise ValueError("nenhuma feição de polígono no GeoJSON")
@@ -155,12 +159,21 @@ def geojson_para_shapefile_zip(colecao: dict, base: Path) -> Path:
     shp[:100] = _cabecalho(len(shp) // 2, bbox)
     shx[:100] = _cabecalho((100 + 8 * len(corpos)) // 2, bbox)
 
+    return {
+        "shp": bytes(shp),
+        "shx": bytes(shx),
+        "dbf": _dbf(campos, registros),
+        "prj": PRJ_SIRGAS2000.encode("utf-8"),
+    }
+
+
+def geojson_para_shapefile_zip(colecao: dict, base: Path) -> Path:
+    """Shapefile de UMA coleção, empacotado num .zip (formato multiarquivo)."""
+    partes = shapefile_partes(colecao)
     zip_path = base.with_name(f"{base.stem}-shapefile.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr(f"{base.stem}.shp", bytes(shp))
-        z.writestr(f"{base.stem}.shx", bytes(shx))
-        z.writestr(f"{base.stem}.dbf", _dbf(campos, registros))
-        z.writestr(f"{base.stem}.prj", PRJ_SIRGAS2000)
+        for ext, dados in partes.items():
+            z.writestr(f"{base.stem}.{ext}", dados)
     return zip_path
 
 
@@ -169,7 +182,8 @@ def _coords_kml(anel: list[list[float]]) -> str:
     return " ".join(f"{float(x)},{float(y)},0" for x, y in anel)
 
 
-def geojson_para_kml(colecao: dict, destino: Path) -> Path:
+def kml_str(colecao: dict) -> str:
+    """KML da coleção como texto (quem chama grava ou põe num zip)."""
     marcas = []
     for f in colecao.get("features", []):
         aneis = _aneis(f["geometry"])
@@ -194,20 +208,57 @@ def geojson_para_kml(colecao: dict, destino: Path) -> Path:
         geom = "".join(f"<Polygon>{''.join(p)}</Polygon>" for p in poligonos_kml)
         multi = f"<MultiGeometry>{geom}</MultiGeometry>" if len(poligonos_kml) > 1 else geom
         marcas.append(f"<Placemark><name>{nome}</name>{multi}</Placemark>")
-    kml = (
+    return (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
         + "".join(marcas)
         + "</Document></kml>"
     )
-    destino.write_text(kml, encoding="utf-8")
+
+
+def geojson_para_kml(colecao: dict, destino: Path) -> Path:
+    destino.write_text(kml_str(colecao), encoding="utf-8")
     return destino
+
+
+# ------------------------------------------------- vários CARs (1 por arquivo)
+def zips_por_car(
+    colecoes: dict[str, dict],
+    base: Path,
+    formatos: set[str] | None = None,
+) -> list[Path]:
+    """Consulta com VÁRIOS CARs (decisão do fundador 2026-08-13): cada
+    imóvel vira um ARQUIVO PRÓPRIO — nada de tudo junto numa coleção só —
+    e os arquivos vão empacotados num zip por formato:
+      <base>-geojson.zip · <base>-shapefile.zip · <base>-kml.zip
+    (no zip do shapefile cada CAR leva seu conjunto .shp/.shx/.dbf/.prj).
+    """
+    formatos = formatos or {"geojson", "shp", "kml"}
+    gerados: list[Path] = []
+    if "geojson" in formatos:
+        destino = base.with_name(f"{base.name}-geojson.zip")
+        with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as z:
+            for car, colecao in colecoes.items():
+                z.writestr(f"{car}.geojson", json.dumps(colecao, ensure_ascii=False))
+        gerados.append(destino)
+    if formatos & {"shp", "shapefile"}:
+        destino = base.with_name(f"{base.name}-shapefile.zip")
+        with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as z:
+            for car, colecao in colecoes.items():
+                for ext, dados in shapefile_partes(colecao).items():
+                    z.writestr(f"{car}.{ext}", dados)
+        gerados.append(destino)
+    if "kml" in formatos:
+        destino = base.with_name(f"{base.name}-kml.zip")
+        with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as z:
+            for car, colecao in colecoes.items():
+                z.writestr(f"{car}.kml", kml_str(colecao))
+        gerados.append(destino)
+    return gerados
 
 
 # ------------------------------------------------------------------- main
 def converter(geojson_path: Path, prefixo: Path | None, formatos: set[str]) -> list[Path]:
-    import json
-
     colecao = json.loads(geojson_path.read_text(encoding="utf-8"))
     base = prefixo or geojson_path.with_suffix("")
     gerados = []
