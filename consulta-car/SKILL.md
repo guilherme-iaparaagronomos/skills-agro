@@ -31,7 +31,8 @@ GET https://consulta.car.gov.br/api/totalizer/getDeatilsByIdentifier/<NUMERO>
   `PI-2200053-1BABC06A...`). Sem captcha, sem token.
 - Resposta: JSON com `nameCity`, `nameState`, `idState`, `latitude` e
   `longitude` (em graus/min/seg, ex.: `8°22'26.947"S`), `haRegisteredArea`,
-  `fiscalModules`, `createdAt` e `bounderBox` (retângulo WKT do imóvel).
+  `fiscalModules`, `createdAt` e `bounderBox` — este último é a CAIXA
+  ENVOLVENTE (retângulo WKT), **não** o perímetro do imóvel; ver a regra 5.
 - **CAR inexistente responde 200 com corpo VAZIO** — trate como "não
   encontrado", não como erro.
 - Formato válido do número: `UF-CCCCCCC-HHHHHHHH...` (UF, 7 dígitos do
@@ -142,6 +143,11 @@ python scripts/baixar_feicao.py <CAR> --temas todos   # varre as comuns
 
 # converter um GeoJSON já baixado (ex.: veio do chat) em shapefile + kml
 python scripts/converter.py area.geojson
+
+# usuário anexou o zip de feições do site? extrai (inclusive zip aninhado)
+# e gera o GeoJSON do polígono real
+python scripts/feicoes.py shape-car.zip
+python scripts/feicoes.py shape-car.zip --somente-perimetro
 ```
 
 Por baixo: `GET .../geoserver/consulta_publica/ows` (WFS 2.0, GetFeature,
@@ -159,11 +165,22 @@ Só quando o usuário precisar do **pacote shapefile idêntico ao do site**
 (ou o WFS estiver fora). Aí o download tem reCAPTCHA, que é **para HUMANO
 resolver** — a skill NUNCA burla, resolve ou terceiriza captcha:
 
+0. **O usuário já anexou um zip de feições nesta conversa?** Então NÃO
+   peça download nem sugira alternativa: rode `scripts/feicoes.py` nele
+   agora. É o caminho mais curto para o polígono real.
 1. Requer navegador (Claude Code/Cowork). Abra o site, preencha o CAR,
    **Buscar**, e no painel "Detalhes" clique **"Baixar feições"**.
 2. **PARE e peça ao usuário**: "clique no 'Não sou um robô' — eu sigo daqui".
-3. Com o zip baixado, `scripts/feicoes.py <arquivo>.zip` extrai e resume os
-   temas (geometria, registros, bbox) e aponta o perímetro AREA_IMOVEL.
+3. Com o zip baixado, `scripts/feicoes.py <arquivo>.zip`:
+   - extrai o pacote **inclusive os zips aninhados** (o SICAR entrega
+     `Area_do_Imovel.zip` dentro do zip externo);
+   - lista os temas com geometria, registros e caixa envolvente;
+   - **gera o GeoJSON de cada tema** — o polígono REAL, todos os vértices,
+     em SIRGAS 2000. O do perímetro alimenta `converter.py` (→ shapefile +
+     KML) e a skill `krigagem-solo`.
+
+   Se o WFS falhou e o usuário NÃO tem o zip, peça que ele baixe pelo site e
+   anexe aqui. Não invente substituto geométrico — ver a regra 5.
 
 ## Regras de resposta
 
@@ -176,11 +193,20 @@ resolver** — a skill NUNCA burla, resolve ou terceiriza captcha:
 3. **Não encontrado ≠ erro**: informe quais números não existem na base e
    siga com os demais.
 4. Ao apresentar resultado único, entregue os campos em lista limpa (como o
-   site mostra) e ofereça o bounding box WKT se o usuário for plotar em GIS.
-5. **Cite a fonte e a data**: "Consulta Pública do CAR (consulta.car.gov.br),
+   site mostra).
+5. **NUNCA use o `bounderBox` como perímetro.** Ele é a CAIXA ENVOLVENTE do
+   imóvel — um retângulo de 4 cantos que engloba terra de vizinhos. O
+   perímetro real tem dezenas ou centenas de vértices. Se o usuário quer
+   plotar em GIS, quer o polígono: rode `baixar_feicao.py` (WFS, sem
+   captcha) ou processe o zip de feições com `feicoes.py`. Entregar o
+   retângulo produz mapa errado com cara de certo — e, encadeado na skill
+   `krigagem-solo`, interpola sobre área que não é do imóvel. O `bounderBox`
+   serve só para enquadrar um mapa de visualização rápida, e mesmo aí diga
+   que é caixa envolvente, não limite da propriedade.
+6. **Cite a fonte e a data**: "Consulta Pública do CAR (consulta.car.gov.br),
    consultado em <data>". Os dados são autodeclarados pelo proprietário no
    SICAR — situação cadastral e sobreposições NÃO vêm nesta consulta.
-6. São dados PÚBLICOS do governo federal; ainda assim, não especule sobre o
+7. São dados PÚBLICOS do governo federal; ainda assim, não especule sobre o
    proprietário — a consulta não traz (nem deve trazer) dados pessoais.
 
 ## Limites conhecidos
@@ -192,3 +218,5 @@ resolver** — a skill NUNCA burla, resolve ou terceiriza captcha:
   para converter (S/W negativos).
 - Base atualizada periodicamente pelo SICAR (a data aparece no rodapé do
   site) — pequenas divergências com o painel estadual são esperadas.
+
+

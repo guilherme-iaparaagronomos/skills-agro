@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """Converte o GeoJSON do imóvel (perímetro/feições) para Shapefile e KML.
 
@@ -65,9 +66,14 @@ def _orientar(anel: list[list[float]], exterior: bool) -> list[list[float]]:
     (GeoJSON usa a convenção OPOSTA — por isso normalizamos aqui.)"""
     a = _area_assinada(anel)
     horario = a < 0
-    if exterior != horario:  # exterior quer horário; buraco quer anti-horário
-        return anel
-    return list(reversed(anel))
+    # exterior quer HORÁRIO, buraco quer ANTI-HORÁRIO. Quando o que veio não
+    # é o que se quer (exterior != horario), é aí que se INVERTE — os dois
+    # ramos estavam trocados até 25/08, e o shapefile saía com o anel externo
+    # anti-horário e o buraco horário, o oposto da convenção que este próprio
+    # texto declara. Leitor estrito lê o buraco como polígono.
+    if exterior != horario:
+        return list(reversed(anel))
+    return anel
 
 
 # ------------------------------------------------------------- shapefile
@@ -288,3 +294,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
