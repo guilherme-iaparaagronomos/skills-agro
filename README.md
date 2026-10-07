@@ -15,6 +15,7 @@ contando o que ela faz, qual a fonte e como foi validada.
 | Skill | O que faz | Baixar |
 |---|---|---|
 | [`5a-aproximacao-mg`](5a-aproximacao-mg/) | Recomendações para o uso de corretivos e fertilizantes em Minas Gerais (5ª Aproximação, CFSEMG, 1999). | [zip](../../releases/latest/download/5a-aproximacao-mg.zip) |
+| [`analise-drone-qgis`](analise-drone-qgis/) | "Roteiro para analisar ortomosaico de drone no QGIS pela ClaudIA QGIS — linhas de plantio, falhas, contagem de plantas e segmentação — rápido, validado e evitando os erros já vistos." | [zip](../../releases/latest/download/analise-drone-qgis.zip) |
 | [`boletim-100-sp`](boletim-100-sp/) | Recomendações de adubação e calagem para o Estado de São Paulo (Boletim 100, IAC). | [zip](../../releases/latest/download/boletim-100-sp.zip) |
 | [`consulta-car`](consulta-car/) | Consulta pública do CAR (Cadastro Ambiental Rural / SICAR): a partir do número de registro, traz município, estado, latitude, longitude, área do imóvel, módulos fiscais e data de cadastro — direto da base oficial (consul | [zip](../../releases/latest/download/consulta-car.zip) |
 | [`krigagem-solo`](krigagem-solo/) | Interpolação por krigagem ordinária de laudos de análise de solo georreferenciados. | [zip](../../releases/latest/download/krigagem-solo.zip) |
