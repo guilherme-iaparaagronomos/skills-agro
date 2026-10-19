@@ -58,28 +58,57 @@ TIPOS_POLIGONO = {5, 15, 25}
 
 
 # --------------------------------------------------------------- extração
-def extrair_tudo(caminho: Path, destino: Path, nivel: int = 0) -> None:
+# Tetos do pacote, somando todos os níveis de zip dentro de zip. O CAR de um
+# imóvel tem poucos arquivos e poucos MB; os tetos só barram arquivo malicioso.
+LIMITE_BYTES = 500 * 1024 * 1024
+LIMITE_ARQUIVOS = 2000
+RAZAO_MAXIMA = 200  # texto e .shp legítimos ficam muito abaixo disso
+
+
+class PacoteSuspeito(Exception):
+    """O zip passa dos tetos de tamanho, de quantidade ou de compressão."""
+
+
+def extrair_tudo(caminho: Path, destino: Path, nivel: int = 0, orcamento: dict | None = None) -> None:
     """Extrai o zip e, recursivamente, os zips que vierem dentro dele.
 
     O SICAR entrega `Area_do_Imovel.zip` dentro do pacote externo. Ler só o
     índice do zip de fora faz o .shp "não existir". O teto de profundidade é
     um freio de mão contra zip malicioso aninhado sem fim (zip bomb).
+
+    Cada membro é conferido ANTES de sair do zip: caminho dentro da pasta
+    destino (zip slip), tamanho e razão de compressão. Só os aprovados são
+    extraídos, um a um, e o orçamento vale para todos os níveis juntos.
     """
+    if orcamento is None:
+        orcamento = {"bytes": LIMITE_BYTES, "arquivos": LIMITE_ARQUIVOS}
     if nivel > 3:
         return
+    base = destino.resolve()
     with zipfile.ZipFile(caminho) as z:
-        for membro in z.namelist():
-            # nunca extrair para fora da pasta destino (zip slip)
-            alvo = (destino / membro).resolve()
-            if not str(alvo).startswith(str(destino.resolve())):
-                print(f"  ignorado (caminho suspeito): {membro}", file=sys.stderr)
+        for info in z.infolist():
+            if info.is_dir():
                 continue
-        z.extractall(destino)
+            # nunca extrair para fora da pasta destino (zip slip): resolve()
+            # + is_relative_to, que não confunde /a/dest com /a/dest2
+            alvo = (destino / info.filename).resolve()
+            if not alvo.is_relative_to(base):
+                print(f"  ignorado (caminho suspeito): {info.filename}", file=sys.stderr)
+                continue
+            orcamento["arquivos"] -= 1
+            orcamento["bytes"] -= info.file_size
+            if orcamento["arquivos"] < 0 or orcamento["bytes"] < 0:
+                raise PacoteSuspeito("o pacote descomprimido passa do limite (500 MB ou 2.000 arquivos)")
+            if info.compress_size and info.file_size / info.compress_size > RAZAO_MAXIMA:
+                raise PacoteSuspeito(f"{info.filename}: compressão fora do normal para um arquivo do CAR")
+            # o zipfile do Python nunca devolve mais bytes do que o tamanho
+            # declarado (e acusa CRC se o conteúdo não bater)
+            z.extract(info, destino)
     for interno in sorted(destino.rglob("*.zip")):
         sub = interno.with_suffix("")
         sub.mkdir(parents=True, exist_ok=True)
         try:
-            extrair_tudo(interno, sub, nivel + 1)
+            extrair_tudo(interno, sub, nivel + 1, orcamento)
         except zipfile.BadZipFile:
             print(f"  aviso: {interno.name} não é um zip válido", file=sys.stderr)
 
@@ -276,6 +305,8 @@ def main() -> None:
         extrair_tudo(caminho, destino)
     except zipfile.BadZipFile:
         sys.exit("o arquivo não é um zip válido — o download pode ter falhado no meio")
+    except PacoteSuspeito as e:
+        sys.exit(f"pacote recusado: {e}. Baixe o arquivo de novo direto do SICAR.")
 
     # varre a PASTA, não o índice do zip: assim pega .shp em qualquer nível
     shps = sorted(destino.rglob("*.shp"))
