@@ -1,6 +1,12 @@
 # A cada mudança nas skills: regenera a tabela do README e reconstrói os zips
 # da release "latest" (é dela que o site e os READMEs linkam o download).
 # Skill nova = criar a pasta com SKILL.md e dar push — o resto é automático.
+#
+# Segurança (18/10/2026): a action de checkout fica presa pelo commit (a tag
+# pode ser movida por quem controla o repositório dela; o Dependabot propõe a
+# troca), o token não fica gravado no checkout (só o passo do push o recebe)
+# e a release "latest" nunca é apagada: os zips são substituídos no lugar, com
+# o sha256 de cada um na nota — o download não fica fora do ar se algo falhar.
 name: Catálogo e release
 
 on:
@@ -17,19 +23,23 @@ jobs:
   atualizar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Regenera a tabela do README
         run: python3 .github/scripts/tabela.py
 
       - name: Commita o README se mudou
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if ! git diff --quiet README.md; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add README.md
             git commit -m "README: tabela de skills [auto]"
-            git push
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
           fi
 
       - name: Monta um zip por skill
@@ -45,7 +55,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --yes --cleanup-tag || true
-          gh release create latest /tmp/zips/*.zip \
-            --title "Skills — última versão" \
-            --notes "Zips gerados automaticamente a partir da main ($GITHUB_SHA). Um \`.zip\` por skill, pronto para instalar em claude.ai → Configurações → Capacidades → Skills."
+          cd /tmp/zips
+          {
+            echo "Zips gerados automaticamente a partir da main ($GITHUB_SHA). Um \`.zip\` por skill, pronto para instalar em claude.ai → Configurações → Capacidades → Skills."
+            echo
+            echo "Para conferir o arquivo baixado: \`sha256sum <skill>.zip\` (Linux/macOS) ou \`Get-FileHash <skill>.zip\` (Windows) tem de dar o valor abaixo."
+            echo
+            echo '```'
+            sha256sum *.zip
+            echo '```'
+          } > /tmp/notas.md
+          gh release view latest -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create latest -R "$GITHUB_REPOSITORY" --title "Skills — última versão" --notes-file /tmp/notas.md
+          gh release upload latest *.zip --clobber -R "$GITHUB_REPOSITORY"
+          # zip de skill que saiu do repositório não fica na release
+          for antigo in $(gh release view latest -R "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'); do
+            [ -f "$antigo" ] || gh release delete-asset latest "$antigo" --yes -R "$GITHUB_REPOSITORY"
+          done
+          gh release edit latest -R "$GITHUB_REPOSITORY" --notes-file /tmp/notas.md

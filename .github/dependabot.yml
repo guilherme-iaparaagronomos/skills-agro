@@ -1,0 +1,7 @@
+# As actions do workflow ficam presas pelo commit; o Dependabot propõe a troca quando sair versão nova.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
