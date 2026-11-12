@@ -18,6 +18,8 @@ contando o que ela faz, qual a fonte e como foi validada.
 | [`analise-drone-qgis`](analise-drone-qgis/) | "Roteiro para analisar ortomosaico de drone no QGIS pela ClaudIA QGIS — linhas de plantio, falhas, contagem de plantas e segmentação — rápido, validado e evitando os erros já vistos." | [zip](../../releases/latest/download/analise-drone-qgis.zip) |
 | [`boletim-100-sp`](boletim-100-sp/) | Recomendações de adubação e calagem para o Estado de São Paulo (Boletim 100, IAC). | [zip](../../releases/latest/download/boletim-100-sp.zip) |
 | [`consulta-car`](consulta-car/) | Consulta pública do CAR (Cadastro Ambiental Rural / SICAR): a partir do número de registro, traz município, estado, latitude, longitude, área do imóvel, módulos fiscais e data de cadastro — direto da base oficial (consul | [zip](../../releases/latest/download/consulta-car.zip) |
+| [`dossie-uso-ocupacao-solo`](dossie-uso-ocupacao-solo/) | Monta o dossiê de uso e ocupação do solo de um imóvel rural em PDF, só com fatos e a fonte de cada um. | [zip](../../releases/latest/download/dossie-uso-ocupacao-solo.zip) |
+| [`interpolacao-idw-solo`](interpolacao-idw-solo/) | Mapas de fertilidade do solo por IDW, em classes, com a área de cada classe em hectares e em % e uma apostila em PDF. | [zip](../../releases/latest/download/interpolacao-idw-solo.zip) |
 | [`krigagem-solo`](krigagem-solo/) | Interpolação por krigagem ordinária de laudos de análise de solo georreferenciados. | [zip](../../releases/latest/download/krigagem-solo.zip) |
 <!-- SKILLS:END -->
 
