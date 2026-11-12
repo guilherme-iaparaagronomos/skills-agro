@@ -23,6 +23,7 @@ contando o que ela faz, qual a fonte e como foi validada.
 | [`interpolacao-idw`](interpolacao-idw/) | Mapas interpolados por IDW, em classes, com a área de cada classe em hectares e em % e uma apostila em PDF, para qualquer dado medido em pontos (solo, produtividade, condutividade elétrica, pragas). | [zip](../../releases/latest/download/interpolacao-idw.zip) |
 | [`interpolacao-krigagem`](interpolacao-krigagem/) | Interpolação por krigagem ordinária de qualquer dado medido em pontos: análise de solo, produtividade, condutividade elétrica, pragas. | [zip](../../releases/latest/download/interpolacao-krigagem.zip) |
 | [`layout-mapa-qgis`](layout-mapa-qgis/) | Monta no QGIS do usuário, pela ClaudIA QGIS, o layout final de um mapa num modelo profissional fixo, com a área de cada classe em hectares e em % na legenda, e exporta em PDF e PNG. | [zip](../../releases/latest/download/layout-mapa-qgis.zip) |
+| [`limpeza-monitor-produtividade`](limpeza-monitor-produtividade/) | Limpa dado denso de máquina (monitor de colheita, condutividade elétrica, sensor de dossel, altimetria) com filtros em ordem, cada um com o parâmetro e a contagem do que removeu, e entrega os pontos limpos e o relatório. | [zip](../../releases/latest/download/limpeza-monitor-produtividade.zip) |
 <!-- SKILLS:END -->
 
 *Tabela e zips são gerados automaticamente a cada atualização — o link "zip" sempre
