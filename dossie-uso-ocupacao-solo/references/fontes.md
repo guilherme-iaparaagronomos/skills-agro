@@ -36,6 +36,22 @@ página diz o que é cada fonte e até onde ela vai.
   - cada mapa é do ano inteiro, não do dia do marco;
   - não é a base oficial do crédito rural (essa é o PRODES) nem substitui o CAR.
 
+## Cobertura do solo recente (Dynamic World)
+
+- **O que é**: classificação automática de cada imagem Sentinel-2, com pixel
+  de 10 m, em 9 classes genéricas, com a probabilidade de cada classe.
+- **O que o dossiê mostra**: a classe mais provável de cada pixel na média das
+  imagens dos últimos 12 meses, a área de cada classe, a probabilidade média
+  e a segunda classe mais provável.
+- **Limites**:
+  - é a leitura de um modelo, não um fato do imóvel;
+  - "Lavoura" não diz qual cultura e "Gramíneas" junta pasto e campo nativo;
+  - não separa vegetação nativa de plantada e não mede desmatamento;
+  - probabilidade baixa indica com o que a classe se confunde, não erro.
+- **Para que serve ao lado do mapeamento anual**: o mapeamento anual dá a
+  história e as datas-marco, com pixel de 30 m e um mapa por ano; a cobertura
+  recente dá o retrato dos últimos meses, com pixel de 10 m.
+
 ## Supressão de vegetação nativa (PRODES e DETER, INPE)
 
 - **PRODES**: mapeamento anual, consolidado, da supressão de vegetação nativa,

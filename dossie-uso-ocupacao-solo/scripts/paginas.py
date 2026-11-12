@@ -100,19 +100,23 @@ def br(v, casas=1):
 def cor_da_classe(nome):
     """Cor por grupo de classe do mapeamento (nativa, pasto, lavoura, silvicultura, água…)."""
     n = nome.lower()
-    if any(t in n for t in ('florest', 'savân', 'mangue', 'restinga', 'apicum')):
+    if any(t in n for t in ('florest', 'savân', 'mangue', 'restinga', 'apicum', 'árvore')):
         return '#1f8d49'
+    if 'pastagem' in n or 'gramínea' in n:  # antes de "campo": "Gramíneas (pasto e campo)"
+        return '#edde8e'
     if any(t in n for t in ('campo', 'alagad', 'pantan', 'afloramento', 'herbác', 'campestre')):
         return '#b8af4f'
-    if 'pastagem' in n:
-        return '#edde8e'
+    if 'solo exposto' in n:
+        return '#c26a3d'
+    if 'arbusto' in n:
+        return '#8a7556'
     if 'mosaico' in n:
         return '#ffefc3'
     if 'silvicultura' in n:
         return '#7a5900'
     if any(t in n for t in ('água', 'agua', 'rio', 'lago', 'aquicultura', 'oceano')):
         return '#2532e4'
-    if any(t in n for t in ('urban', 'mineração', 'praia', 'não vegetada', 'duna')):
+    if any(t in n for t in ('urban', 'mineração', 'praia', 'não vegetada', 'duna', 'construída')):
         return '#d4271e'
     return '#e974ed'  # lavouras: soja, cana, café, citrus, arroz, algodão…
 
@@ -513,6 +517,38 @@ def pagina_marcos(doc, uso):
     return f
 
 
+def pagina_cobertura(doc, cb):
+    f = Folha(doc)
+    f.secao('Cobertura do solo recente — classificação de 10 m')
+    periodo = f' Período de {cb["periodo"][0]} a {cb["periodo"][1]}.' if cb.get('periodo') else ''
+    imagens = (f' {cb["dias_com_imagem"]} dias com imagem; a última em {cb["ultima_imagem"]}.'
+               if cb.get('dias_com_imagem') else '')
+    f.texto(f'Pelo Dynamic World: classificação automática de cada imagem Sentinel-2, com pixel de 10 m.{periodo}'
+            f'{imagens} A classe de cada pixel é a mais provável na média das imagens do período.')
+    classes = cb.get('classes') or []
+    if classes:
+        ax = f.eixo(0.022 * len(classes) + 0.012, esq=ESQ + 0.21)
+        barras_horizontais(ax, [(c['nome'], c['ha'], c['pct'], cor_da_classe(c['nome'])) for c in classes])
+        f.tabela([('Classe', ESQ, 'left'), ('ha', 0.42, 'right'), ('%', 0.48, 'right'),
+                  ('Prob. média', 0.60, 'right'), ('2ª classe mais provável', 0.64, 'left')],
+                 [[c['nome'], br(c['ha']), br(c['pct'], 0), f"{br(c['probabilidade'], 0)} %",
+                   f"{c['segunda']} ({br(c['segunda_pct'], 0)} %)" if c.get('segunda') else '—'] for c in classes],
+                 tam=8.2)
+    if cb.get('faixas'):
+        f.secao('Probabilidade da classe escolhida')
+        f.tabela([('Faixa de probabilidade', ESQ, 'left'), ('ha', 0.78, 'right'), ('% do perímetro', DIR, 'right')],
+                 [[nome[0].upper() + nome[1:], br(ha), br(pct, 0)] for nome, ha, pct in cb['faixas']])
+        if cb.get('probabilidade_media') is not None:
+            f.nota(f'Probabilidade média da classe escolhida no perímetro: {br(cb["probabilidade_media"], 0)} %. '
+                   'Probabilidade menor não quer dizer classe errada: mata e água costumam ficar perto de 70 %; '
+                   'lavoura anual, pasto e arbusto, entre 30 e 50 %.')
+    f.nota('As classes são genéricas: "Lavoura" não diz qual cultura e "Gramíneas" junta pasto e campo nativo. A '
+           'classificação não separa vegetação nativa de plantada e não mede desmatamento; o histórico e as '
+           'datas-marco estão nas páginas do mapeamento anual, e a supressão, na do PRODES.')
+    f.nota(f'Fonte: {cb["fonte"]}.')
+    return f
+
+
 def pagina_prodes(doc, pr):
     f = Folha(doc)
     f.secao('Supressão de vegetação nativa — PRODES e DETER (INPE)')
@@ -711,6 +747,8 @@ if __name__ == '__main__':
     assert br(1669.5) == '1.669,5' and br(0.3, 2) == '0,30' and br(None) == '—' and br(40, 0) == '40'
     assert br(-0.01) == '0,0' and br(-37.5) == '−37,5'
     assert cor_da_classe('Formação Florestal') == '#1f8d49' and cor_da_classe('Soja') == '#e974ed'
+    assert cor_da_classe('Árvores') == '#1f8d49' and cor_da_classe('Gramíneas (pasto e campo)') == '#edde8e'
+    assert cor_da_classe('Solo exposto') == '#c26a3d' and cor_da_classe('Lavoura') == '#e974ed'
     assert _data_br('2026-11-12') == '12/11/2026'
     doc = {'nome': 'Fazenda Exemplo', 'data': '12/11/2026'}
     assert usar_tema('escuro')['num'] and T['pagina'] == '#0B100B' and T['verde'] == '#52C937'
@@ -734,6 +772,11 @@ if __name__ == '__main__':
     folhas = [pagina_identificacao(doc, {'uso': uso, 'car': car}, quadrado, 'SIRGAS 2000 / UTM 22S.'),
               pagina_car(doc, car, quadrado, [('vegetacao_nativa', [[[(100, 100), (400, 100), (400, 500), (100, 500)]]])]),
               pagina_uso(doc, uso), pagina_marcos(doc, uso), pagina_comparacao(doc, car, uso),
+              pagina_cobertura(doc, {'fonte': 'Dynamic World V1', 'periodo': ('13/11/2025', '12/11/2026'),
+                                     'dias_com_imagem': 88, 'ultima_imagem': '09/11/2026', 'probabilidade_media': 55,
+                                     'classes': [{'nome': 'Árvores', 'ha': 48, 'pct': 60, 'probabilidade': 68,
+                                                  'segunda': 'Lavoura', 'segunda_pct': 5}],
+                                     'faixas': [('50 % ou mais', 48.0, 60.0)]}),
               pagina_fontes(doc, [('Uso do solo', 'MapBiomas Coleção 11.')], ['observação de teste'])]
     with tempfile.TemporaryDirectory() as pasta:
         arq = os.path.join(pasta, 'p.png')

@@ -3,8 +3,9 @@ name: dossie-uso-ocupacao-solo
 description: >-
   Monta o dossiê de uso e ocupação do solo de um imóvel rural em PDF, só com
   fatos e a fonte de cada um. Reúne o uso do solo de 1985 a hoje e a situação
-  frente às datas-marco de 2008, 2019 e 2020 (MapBiomas), a supressão mapeada
-  pelo INPE (PRODES e DETER), o relevo e, quando há o número do CAR, o que o
+  frente às datas-marco de 2008, 2019 e 2020 (MapBiomas), a cobertura do solo
+  dos últimos 12 meses (Dynamic World), a supressão mapeada pelo INPE (PRODES
+  e DETER), o relevo e, quando há o número do CAR, o que o
   cadastro declara (situação, reserva legal, vegetação nativa, área
   consolidada, APP) ao lado do que os mapas mostram. Parte do número do CAR
   (busca o perímetro no SICAR), de um arquivo de perímetro ou de uma fazenda
@@ -59,21 +60,23 @@ O dossiê **mostra o dado e para aí**. Você também:
 3. **Chame as ferramentas da ClaudIA Sat** com o MESMO perímetro (envie o
    GeoJSON na primeira e reutilize o `geometria_id` nas seguintes):
    - `uso_do_solo` — obrigatória;
+   - `cobertura_do_solo` — o retrato dos últimos 12 meses, com pixel de 10 m
+     (demora cerca de um minuto);
    - `prodes_fazenda`;
    - `relevo_fazenda`;
    - `imagem_satelite` (produto `rgb`) — só para registrar a data da cena mais
      recente sem nuvem.
-   As três primeiras consomem hectares da franquia do usuário: avise antes.
+   As quatro primeiras consomem hectares da franquia do usuário: avise antes.
 4. **Grave o texto de cada ferramenta num arquivo, COMO VEIO**: `uso.txt`,
-   `prodes.txt`, `relevo.txt`, `imagem.txt`. Copie o texto inteiro, sem
+   `cobertura.txt`, `prodes.txt`, `relevo.txt`, `imagem.txt`. Copie o texto inteiro, sem
    resumir, reordenar, traduzir nem arredondar, **com a lista de arquivos e os
    links**. O script lê os números desse texto e confere as somas (um número
    trocado na cópia aparece como aviso) e usa os links para buscar os mapas.
    Os links valem 1 hora: monte o dossiê logo depois das consultas.
 5. **Monte**:
    `python scripts/montar_dossie.py --perimetro ./dossie/perimetro.geojson
-   --nome "Fazenda Exemplo" --uso uso.txt --prodes prodes.txt --relevo
-   relevo.txt --imagem imagem.txt --car ./dossie/car.json --car-temas
+   --nome "Fazenda Exemplo" --uso uso.txt --cobertura cobertura.txt --prodes
+   prodes.txt --relevo relevo.txt --imagem imagem.txt --car ./dossie/car.json --car-temas
    ./dossie/car-temas.geojson --saida ./dossie --png`
    Sem CAR, tire `--car` e `--car-temas` e informe `--municipio "Cidade/UF"`.
 6. **Leia a saída do script.** "conferências de soma: tudo fechou" = pode
@@ -96,7 +99,8 @@ O dossiê **mostra o dado e para aí**. Você também:
      envia no chat, você os põe numa pasta e roda de novo com
      `--figuras ./figuras`. O script reconhece pelo nome: `rgb_AAAA-MM-DD.tif`,
      `uso_solo_situacao`, `uso_solo_mapas`, `uso_solo_historico`,
-     `prodes_deter`, `relevo_altitude`, `relevo_declividade`.
+     `cobertura_classes`, `cobertura_confianca`, `prodes_deter`,
+     `relevo_altitude`, `relevo_declividade`.
    - Outra imagem entra com `--figura "Legenda=arquivo.png"`.
 
 ## O que sai no PDF
@@ -107,6 +111,7 @@ O dossiê **mostra o dado e para aí**. Você também:
 | CAR | situação do cadastro, condição da análise, datas, sobreposições informadas, áreas declaradas e o mapa delas | SICAR |
 | Uso do solo | classes do último mapa e tabela das datas-marco | MapBiomas |
 | Datas-marco | situação de cada área, área aberta depois de 2008, 2019 e 2020, ano da abertura | MapBiomas |
+| Cobertura recente | classes dos últimos 12 meses (10 m), probabilidade de cada uma e a 2ª mais provável | Dynamic World |
 | PRODES e DETER | polígonos por período, frente ao mínimo da nota do MMA, alertas | INPE |
 | Declarado × observado | área, vegetação nativa e uso anterior a 2008: os dois números e a diferença | SICAR e MapBiomas |
 | Relevo | altitude, declive, classes da Embrapa, faixas de mecanização | modelo de terreno de 30 m |
@@ -118,7 +123,7 @@ Bloco sem dado não aparece: sem CAR não há as páginas do CAR nem a comparaç
 ## Sigilo das fontes
 
 Cite as fontes exatamente como as ferramentas mandam (MapBiomas Coleção N;
-PRODES e DETER do INPE; ANADEM/Copernicus DEM; Sentinel-2). Sobre como o dado
+Dynamic World; PRODES e DETER do INPE; ANADEM/Copernicus DEM; Sentinel-2). Sobre como o dado
 é processado, a única frase é: processado pelas ferramentas da comunidade
 agrônomo10X (OagronomIA). Não deduza nem cite plataforma, biblioteca ou nuvem.
 
@@ -140,5 +145,10 @@ agrônomo10X (OagronomIA). Não deduza nem cite plataforma, biblioteca ou nuvem.
 - `python scripts/montar_dossie.py --demo` monta um dossiê de exemplo com
   dados inventados, sem rede. `python scripts/<nome>.py` roda os testes de
   cada módulo (`car.py --teste`).
+- A `monitorar_cobertura` (mudança da cobertura no tempo) não entra no dossiê:
+  é acompanhamento, não retrato. Ofereça à parte se o usuário pedir.
+- Restrições (unidades de conservação, embargos, terras indígenas) e dados de
+  solo ainda não têm ferramenta na ClaudIA Sat. Se o usuário pedir, diga que
+  o dossiê não cobre; não busque por conta própria nem estime.
 - Formato dos textos lidos e o que cada conferência faz: `references/dados.md`.
 - Fontes, datas-marco e limites: `references/fontes.md`.

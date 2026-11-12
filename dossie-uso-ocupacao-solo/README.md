@@ -12,6 +12,8 @@ com a fonte e o ano. Não avalia, não conclui e não recomenda.
 - **Uso do solo de 1985 a hoje** e a situação frente às datas-marco de 2008,
   2019 e 2020: o que é vegetação nativa, o uso que já existia e o que foi
   aberto depois de cada data, com o ano da abertura.
+- **Cobertura do solo recente** (Dynamic World): as classes dos últimos 12
+  meses, com pixel de 10 m e a probabilidade de cada uma.
 - **PRODES e DETER** (INPE): polígonos de supressão por período, frente ao
   mínimo da nota do MMA, e os alertas.
 - **Declarado no CAR × observado no mapeamento**: os dois números e a diferença.

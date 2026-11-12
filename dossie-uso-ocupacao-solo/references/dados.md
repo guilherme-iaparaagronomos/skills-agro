@@ -23,6 +23,17 @@ Conferências:
 - "aberto depois de" não cresce de 2008 para 2019 para 2020;
 - a soma das faixas "Aberto…" bate com o total depois de 2008 (0,35 ha).
 
+## cobertura_do_solo → `--cobertura`
+
+| Linha procurada | O que vira |
+|---|---|
+| `período de 13/11/2025 a 12/11/2026 (…): 88 dias com imagem, a última em 09/11/2026.` | período, dias com imagem e data da última |
+| `- Árvores 801 ha (48 %) — probabilidade média 68 %; 2ª mais provável ali: Gramíneas (pasto e campo) (5 %)` | uma linha por classe |
+| `PROBABILIDADE DA CLASSE ESCOLHIDA, POR FAIXA (média de 55 %): 50 % ou mais em 972,7 ha (58 %) · …` | faixas de probabilidade |
+| `Cite a fonte como está: Dynamic World V1 (…), de imagens Sentinel-2.` | texto da fonte |
+
+Conferência: a soma das classes bate com a área (2%).
+
 ## prodes_fazenda → `--prodes`
 
 | Linha procurada | O que vira |
@@ -59,7 +70,8 @@ Conferência: as classes somam 100% (tolerância de 1,5).
 
 No fim de cada texto vem a lista `- nome.ext (NN KB): https://…`. O script
 baixa só estes: `uso_solo_situacao.png`, `uso_solo_mapas.png`,
-`uso_solo_historico.png`, `prodes_deter.png`, `relevo_altitude.png`,
+`uso_solo_historico.png`, `cobertura_classes.png`, `cobertura_confianca.png`,
+`prodes_deter.png`, `relevo_altitude.png`,
 `relevo_declividade.png` e `rgb_AAAA-MM-DD.tif`. Regras: só `https`, até 12 MB
 por arquivo, e o conteúdo precisa ser mesmo PNG ou TIFF. GeoPackage, curvas de
 nível e os GeoTIFFs de relevo não são baixados: são para o QGIS. Falha de rede
@@ -67,7 +79,7 @@ não derruba o dossiê; a saída diz o que faltou.
 
 ## Entre as ferramentas
 
-- as áreas informadas por uso do solo, PRODES e relevo diferem menos de 1%
+- as áreas informadas por uso do solo, cobertura, PRODES e relevo diferem menos de 1%
   (senão os textos não são do mesmo perímetro);
 - a área declarada no CAR e a do perímetro analisado diferem menos de 3%
   (senão o perímetro pode não ser o do CAR informado).

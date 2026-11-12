@@ -3,11 +3,12 @@
 Entradas (só o perímetro e o uso do solo são obrigatórios):
 
   python montar_dossie.py --perimetro perimetro.geojson --nome "Fazenda Exemplo" \
-      --uso uso_do_solo.txt --prodes prodes_fazenda.txt --relevo relevo_fazenda.txt \
+      --uso uso_do_solo.txt --cobertura cobertura_do_solo.txt \
+      --prodes prodes_fazenda.txt --relevo relevo_fazenda.txt \
       --car car.json --car-temas car-temas.geojson \
       --imagem imagem_satelite.txt --figuras ./figuras --saida ./dossie
 
-- --uso/--prodes/--relevo/--imagem: o TEXTO que cada ferramenta da ClaudIA Sat
+- --uso/--cobertura/--prodes/--relevo/--imagem: o TEXTO que cada ferramenta da ClaudIA Sat
   devolveu, colado num arquivo como veio (sem resumir nem arredondar).
 - --car/--car-temas: saída de `car.py` (dispensável quando o usuário só tem o
   perímetro).
@@ -47,12 +48,15 @@ FIGURAS_CONHECIDAS = [
     (r'uso_solo_situacao', 'Uso do solo: situação frente às datas-marco', 'uso'),
     (r'uso_solo_mapas', 'Uso do solo: mapas dos anos-marco', 'uso'),
     (r'uso_solo_historico', 'Uso do solo: histórico ano a ano', 'uso'),
+    (r'cobertura_classes', 'Cobertura do solo recente: classes', 'cobertura'),
+    (r'cobertura_confianca', 'Cobertura do solo recente: probabilidade da classe', 'cobertura'),
     (r'prodes_deter', 'PRODES e DETER no perímetro', 'prodes'),
     (r'relevo_altitude', 'Relevo: altitude e curvas de nível', 'relevo'),
     (r'relevo_declividade', 'Relevo: declividade', 'relevo'),
 ]
 # o que vale baixar dos links das ferramentas (o resto — GeoPackage, curvas — é para o QGIS)
-BAIXAR = re.compile(r'^(uso_solo_(situacao|mapas|historico)|prodes_deter|relevo_(altitude|declividade))\.png$'
+BAIXAR = re.compile(r'^(uso_solo_(situacao|mapas|historico)|cobertura_(classes|confianca)|prodes_deter'
+                    r'|relevo_(altitude|declividade))\.png$'
                     r'|^rgb_\d{4}-\d{2}-\d{2}\.tif$')
 TETO_DO_ARQUIVO = 12 * 1024 * 1024
 ASSINATURAS = {'.png': (b'\x89PNG',), '.tif': (b'II*\x00', b'MM\x00*')}
@@ -173,6 +177,7 @@ def principal(argv=None):
     p.add_argument('--perimetro', help='perímetro: .geojson/.kml/.shp/.wkt')
     p.add_argument('--nome', help='nome do imóvel (capa e cabeçalho)')
     p.add_argument('--uso', help='texto de uso_do_solo')
+    p.add_argument('--cobertura', help='texto de cobertura_do_solo (retrato recente, 10 m)')
     p.add_argument('--prodes', help='texto de prodes_fazenda')
     p.add_argument('--relevo', help='texto de relevo_fazenda')
     p.add_argument('--imagem', help='texto de imagem_satelite (data da cena)')
@@ -203,10 +208,12 @@ def principal(argv=None):
     uso = _ler(args.uso, leitura.ler_uso, avisos)
     if not uso.get('hoje') and not uso.get('marcos'):
         raise SystemExit('não reconheci o texto de uso_do_solo: cole o texto da ferramenta como veio')
+    cobertura = _ler(args.cobertura, leitura.ler_cobertura, avisos)
     prodes = _ler(args.prodes, leitura.ler_prodes, avisos)
     relevo = _ler(args.relevo, leitura.ler_relevo, avisos)
     imagem = _ler(args.imagem, leitura.ler_imagem, avisos)
-    avisos.extend(leitura.conferir_areas({'uso do solo': uso, 'PRODES': prodes, 'relevo': relevo}))
+    avisos.extend(leitura.conferir_areas({'uso do solo': uso, 'cobertura do solo': cobertura,
+                                          'PRODES': prodes, 'relevo': relevo}))
     cadastro = json.loads(Path(args.car).read_text(encoding='utf-8')) if args.car else None
     if cadastro and cadastro.get('area_declarada_ha') and uso.get('area_ha'):
         a, b = cadastro['area_declarada_ha'], uso['area_ha']
@@ -227,12 +234,15 @@ def principal(argv=None):
         'imagem': (f"{imagem['satelite']} de {imagem['data']}, com {paginas.br(imagem['livre_pct'])} % do "
                    'perímetro sem nuvem') if imagem else None,
     }
-    dados = {'uso': uso, 'prodes': prodes, 'relevo': relevo, 'imagem': imagem, 'car': cadastro}
+    dados = {'uso': uso, 'cobertura': cobertura, 'prodes': prodes, 'relevo': relevo, 'imagem': imagem,
+             'car': cadastro}
 
     folhas = [paginas.pagina_identificacao(doc, dados, aneis, zona_txt)]
     if cadastro:
         folhas.append(paginas.pagina_car(doc, cadastro, aneis, temas_geo))
     folhas += [paginas.pagina_uso(doc, uso), paginas.pagina_marcos(doc, uso)]
+    if cobertura and cobertura.get('classes'):
+        folhas.append(paginas.pagina_cobertura(doc, cobertura))
     if prodes:
         folhas.append(paginas.pagina_prodes(doc, prodes))
     if cadastro and paginas.linhas_da_comparacao(cadastro, uso):
@@ -241,14 +251,14 @@ def principal(argv=None):
         folhas.append(paginas.pagina_relevo(doc, relevo))
 
     fonte_de = {'uso': uso['fonte'], 'prodes': (prodes or {}).get('fonte'), 'relevo': (relevo or {}).get('fonte'),
-                'imagem': None}
+                'cobertura': (cobertura or {}).get('fonte'), 'imagem': None}
     if imagem:
         fonte_de['imagem'] = (f"{imagem['fonte']}; cena de {imagem['data']}, "
                               f"{paginas.br(imagem['livre_pct'])} % do perímetro sem nuvem")
     # figuras: a pasta do usuário ou, sem ela, o que der para baixar pelos links dos textos
     pasta_figuras, notas = (Path(args.figuras) if args.figuras else None), []
     if not pasta_figuras and not args.sem_baixar:
-        textos = [Path(c).read_text(encoding='utf-8') for c in (args.imagem, args.uso, args.prodes, args.relevo) if c]
+        textos = [Path(c).read_text(encoding='utf-8') for c in (args.imagem, args.uso, args.cobertura, args.prodes, args.relevo) if c]
         baixados, falhas = baixar_figuras(textos, Path(args.saida) / 'figuras')
         if baixados:
             pasta_figuras = Path(args.saida) / 'figuras'
@@ -272,6 +282,8 @@ def principal(argv=None):
             avisos.append(f'a figura {caminho.name} não pôde ser lida')
 
     fontes = [('Uso e cobertura do solo', f'{uso["fonte"]}: mapas anuais de 30 m.')]
+    if cobertura:
+        fontes.append(('Cobertura do solo recente', cobertura['fonte'] + ': classificação de 10 m.'))
     if prodes:
         fontes.append(('Supressão de vegetação nativa', prodes['fonte']
                        + (f', licença {prodes["licenca"]}.' if prodes.get('licenca') else '.')))
@@ -309,6 +321,9 @@ def principal(argv=None):
             w.writerow(['vegetação nativa', m['ano'], 'total', paginas.br(m['nativa_ha']), 'ha'])
             for nome, ha, _ in m['classes']:
                 w.writerow(['uso do solo', m['ano'], nome, paginas.br(ha), 'ha'])
+        for c in (cobertura or {}).get('classes', []):
+            w.writerow(['cobertura recente (10 m)', (cobertura.get('periodo') or ('', ''))[1], c['nome'],
+                        paginas.br(c['ha']), 'ha'])
         for nome, ha in uso.get('situacao', []):
             w.writerow(['situação frente aos marcos', '', nome, paginas.br(ha), 'ha'])
         for ano, ha in uso.get('abertura_por_ano', []):

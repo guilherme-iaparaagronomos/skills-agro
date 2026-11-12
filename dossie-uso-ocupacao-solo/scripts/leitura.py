@@ -5,7 +5,8 @@ A IA cola o texto de cada ferramenta num arquivo, como veio. Aqui ele vira
 dados por expressão regular e passa por conferências de soma: se um número foi
 copiado errado, a conta não fecha e o dossiê avisa em vez de imprimir o erro.
 
-Ferramentas lidas: uso_do_solo, prodes_fazenda, relevo_fazenda, imagem_satelite.
+Ferramentas lidas: uso_do_solo, cobertura_do_solo, prodes_fazenda, relevo_fazenda,
+imagem_satelite.
 Campo que não for achado vira aviso ("não li ...") e a seção sai sem ele.
 """
 
@@ -198,6 +199,36 @@ def ler_relevo(texto):
     return d, avisos
 
 
+def ler_cobertura(texto):
+    """Texto de cobertura_do_solo (retrato recente, classificação de 10 m) → dados + avisos."""
+    d, avisos = {'area_ha': _area(texto)}, []
+    m = re.search(r'período de (\d{2}/\d{2}/\d{4}) a (\d{2}/\d{2}/\d{4})', texto)
+    d['periodo'] = (m.group(1), m.group(2)) if m else None
+    m = re.search(r'(\d+) dias? com imagem, a última em (\d{2}/\d{2}/\d{4})', texto)
+    d['dias_com_imagem'], d['ultima_imagem'] = (int(m.group(1)), m.group(2)) if m else (None, None)
+    d['classes'] = []
+    for m in re.finditer(rf'^- (.+?) ({_NUM}) ha \(({_NUM}) %\) — probabilidade média ({_NUM}) %'
+                         rf'(?:; 2ª mais provável ali: (.+?) \(({_NUM}) %\))?\.?$', texto, re.M):
+        d['classes'].append({'nome': m.group(1).strip(), 'ha': numero(m.group(2)), 'pct': numero(m.group(3)),
+                             'probabilidade': numero(m.group(4)), 'segunda': m.group(5),
+                             'segunda_pct': numero(m.group(6)) if m.group(6) else None})
+    if not d['classes']:
+        avisos.append('cobertura do solo: não li as linhas das classes')
+    m = re.search(rf'^PROBABILIDADE DA CLASSE ESCOLHIDA, POR FAIXA \(média de ({_NUM}) %\): (.*?)\.?$', texto, re.M)
+    d['probabilidade_media'] = numero(m.group(1)) if m else None
+    d['faixas'] = [(nome.strip(), numero(ha), numero(pct)) for nome, ha, pct in
+                   re.findall(rf'([^·]+?) em ({_NUM}) ha \(({_NUM}) %\)', m.group(2))] if m else []
+    m = re.search(r'Cite a fonte como está: (.+?)\.\s*$', texto, re.M)
+    d['fonte'] = m.group(1).strip() if m else 'Dynamic World'
+    area = d['area_ha']
+    if area and d['classes']:
+        soma = sum(c['ha'] for c in d['classes'])
+        if abs(soma - area) > max(1.0, 0.02 * area):
+            avisos.append(f'cobertura do solo: as classes somam {soma:.1f} ha e a área é {area:.1f} ha — '
+                          'confira o texto colado')
+    return d, avisos
+
+
 def ler_imagem(texto):
     """Texto de imagem_satelite → data da cena e % sem nuvem."""
     m = re.search(r'Cena (\S+) de (\d{4}-\d{2}-\d{2}), com ([\d.,]+)% da área livre de nuvem '
@@ -320,5 +351,26 @@ LEIA ASSIM: é um modelo de terreno de 30 m. Cite a fonte como está: ANADEM v1 
     assert av == [] and img == {'satelite': 'Sentinel-2', 'data': '27/10/2026', 'livre_pct': 99.7,
                                 'fonte': 'Copernicus Sentinel-2 L2A, 10 m'}
     assert conferir_areas({'uso': uso, 'prodes': pr}) == []
+
+    COBERTURA = '''Área completa — 1.000 ha. COBERTURA DO SOLO pelo Dynamic World (classificação de 10 m de cada imagem Sentinel-2), período de 13/11/2025 a 12/11/2026 (os últimos 12 meses, o padrão): 88 dias com imagem, a última em 09/11/2026.
+CLASSES (a mais provável de cada pixel):
+- Árvores 480 ha (48 %) — probabilidade média 68 %; 2ª mais provável ali: Gramíneas (pasto e campo) (5 %)
+- Gramíneas (pasto e campo) 290,5 ha (29 %) — probabilidade média 48 %; 2ª mais provável ali: Lavoura (15 %)
+- Lavoura 229,5 ha (23 %) — probabilidade média 34 %
+PROBABILIDADE MÉDIA DE CADA CLASSE NA ÁREA TODA: Árvores 39 % · Lavoura 14 %.
+PROBABILIDADE DA CLASSE ESCOLHIDA, POR FAIXA (média de 55 %): 50 % ou mais em 580 ha (58 %) · 35 a 50 % em 220 ha (22 %) · menos de 35 % em 200 ha (20 %).
+
+LEIA ASSIM: é a leitura de um modelo. Cite a fonte como está: Dynamic World V1 (Google e World Resources Institute), de imagens Sentinel-2.
+'''
+    cb, av = ler_cobertura(COBERTURA)
+    assert av == [], av
+    assert cb['periodo'] == ('13/11/2025', '12/11/2026') and cb['dias_com_imagem'] == 88 and cb['ultima_imagem'] == '09/11/2026'
+    assert cb['classes'][1] == {'nome': 'Gramíneas (pasto e campo)', 'ha': 290.5, 'pct': 29.0, 'probabilidade': 48.0,
+                                'segunda': 'Lavoura', 'segunda_pct': 15.0}
+    assert cb['classes'][2]['segunda'] is None and cb['probabilidade_media'] == 55
+    assert cb['faixas'] == [('50 % ou mais', 580.0, 58.0), ('35 a 50 %', 220.0, 22.0), ('menos de 35 %', 200.0, 20.0)]
+    assert cb['fonte'].startswith('Dynamic World V1')
+    _, av = ler_cobertura(COBERTURA.replace('Árvores 480 ha', 'Árvores 840 ha'))
+    assert any('somam' in a for a in av), av
     assert conferir_areas({'uso': uso, 'relevo': rv})  # 1.000 ha × 1.669,5 ha: perímetros diferentes
-    print('leitura OK: uso do solo, PRODES/DETER, relevo, imagem e as conferências de soma')
+    print('leitura OK: uso do solo, cobertura recente, PRODES/DETER, relevo, imagem e as conferências de soma')
