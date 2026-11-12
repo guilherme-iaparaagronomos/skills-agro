@@ -22,6 +22,7 @@ contando o que ela faz, qual a fonte e como foi validada.
 | [`dossie-uso-ocupacao-solo`](dossie-uso-ocupacao-solo/) | Monta o dossiê de uso e ocupação do solo de um imóvel rural em PDF, só com fatos e a fonte de cada um. | [zip](../../releases/latest/download/dossie-uso-ocupacao-solo.zip) |
 | [`interpolacao-idw`](interpolacao-idw/) | Mapas interpolados por IDW, em classes, com a área de cada classe em hectares e em % e uma apostila em PDF, para qualquer dado medido em pontos (solo, produtividade, condutividade elétrica, pragas). | [zip](../../releases/latest/download/interpolacao-idw.zip) |
 | [`interpolacao-krigagem`](interpolacao-krigagem/) | Interpolação por krigagem ordinária de qualquer dado medido em pontos: análise de solo, produtividade, condutividade elétrica, pragas. | [zip](../../releases/latest/download/interpolacao-krigagem.zip) |
+| [`layout-mapa-qgis`](layout-mapa-qgis/) | Monta no QGIS do usuário, pela ClaudIA QGIS, o layout final de um mapa num modelo profissional fixo, com a área de cada classe em hectares e em % na legenda, e exporta em PDF e PNG. | [zip](../../releases/latest/download/layout-mapa-qgis.zip) |
 <!-- SKILLS:END -->
 
 *Tabela e zips são gerados automaticamente a cada atualização — o link "zip" sempre
