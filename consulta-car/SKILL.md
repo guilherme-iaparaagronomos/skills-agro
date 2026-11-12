@@ -156,7 +156,7 @@ Por baixo: `GET .../geoserver/consulta_publica/ows` (WFS 2.0, GetFeature,
 `area_consolidada`, `app_*` etc.) filtram pelo mesmo campo. A conversão
 (`converter.py`) é **Python puro** (sem GDAL): escreve Shapefile
 (.shp/.shx/.dbf/.prj num .zip) e KML, tudo em SIRGAS 2000. Abre direto no
-QGIS/Google Earth e serve de **perímetro para a skill `krigagem-solo`**.
+QGIS/Google Earth e serve de **perímetro para a skill `interpolacao-krigagem`**.
 Detalhes das camadas em `references/api-sicar.md`.
 
 ## Fallback — baixar o SHAPEFILE oficial pelo site (com captcha)
@@ -177,7 +177,7 @@ resolver** — a skill NUNCA burla, resolve ou terceiriza captcha:
    - lista os temas com geometria, registros e caixa envolvente;
    - **gera o GeoJSON de cada tema** — o polígono REAL, todos os vértices,
      em SIRGAS 2000. O do perímetro alimenta `converter.py` (→ shapefile +
-     KML) e a skill `krigagem-solo`.
+     KML) e a skill `interpolacao-krigagem`.
 
    Se o WFS falhou e o usuário NÃO tem o zip, peça que ele baixe pelo site e
    anexe aqui. Não invente substituto geométrico — ver a regra 5.
@@ -200,7 +200,7 @@ resolver** — a skill NUNCA burla, resolve ou terceiriza captcha:
    plotar em GIS, quer o polígono: rode `baixar_feicao.py` (WFS, sem
    captcha) ou processe o zip de feições com `feicoes.py`. Entregar o
    retângulo produz mapa errado com cara de certo — e, encadeado na skill
-   `krigagem-solo`, interpola sobre área que não é do imóvel. O `bounderBox`
+   `interpolacao-krigagem`, interpola sobre área que não é do imóvel. O `bounderBox`
    serve só para enquadrar um mapa de visualização rápida, e mesmo aí diga
    que é caixa envolvente, não limite da propriedade.
 6. **Cite a fonte e a data**: "Consulta Pública do CAR (consulta.car.gov.br),

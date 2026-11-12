@@ -15,7 +15,7 @@ Uso:
   python baixar_feicao.py <CAR> --temas todos      # todas as camadas com dado
 
 Saída: GeoJSON (EPSG:4674 SIRGAS 2000) — abre no QGIS e serve de perímetro
-para a skill krigagem-solo. Só biblioteca padrão.
+para a skill interpolacao-krigagem. Só biblioteca padrão.
 """
 
 from __future__ import annotations
@@ -218,7 +218,7 @@ def main() -> None:
     print(f"{len(todas)} feição(ões) — SIRGAS 2000 (EPSG:4674):")
     for g in gerados:
         print(f"  {g}")
-    print("  → abre no QGIS/Earth e serve de perímetro p/ a skill krigagem-solo")
+    print("  → abre no QGIS/Earth e serve de perímetro p/ a skill interpolacao-krigagem")
 
 
 if __name__ == "__main__":

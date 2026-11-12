@@ -1,22 +1,28 @@
 ---
-name: krigagem-solo
+name: interpolacao-krigagem
 description: >-
-  Interpolação por krigagem ordinária de laudos de análise de solo
-  georreferenciados. Entradas: perímetro do talhão, pontos de amostragem
-  (shapefile/GeoJSON/KML/CSV) e o laudo do laboratório. Casa os IDs do shape
-  com os do laudo mesmo com divergências (T01-03 ≈ t1-3), testa três modelos
-  de semivariograma (exponencial, esférico e gaussiano), escolhe o melhor por
-  validação cruzada e gera mapa raster (GeoTIFF) + PNG com legenda em régua,
-  pixel de 5 m. Acione com "mapa de fertilidade", "krigagem", "interpolar
-  análise de solo", "agricultura de precisão" ou quando o usuário trouxer
-  laudo + pontos de amostragem de um talhão.
+  Interpolação por krigagem ordinária de qualquer dado medido em pontos:
+  análise de solo, produtividade, condutividade elétrica, pragas. Entradas:
+  perímetro do talhão, pontos de amostragem (shapefile/GeoJSON/KML/CSV) e a
+  tabela de valores (o laudo do laboratório, no caso do solo). Casa os IDs do
+  shape com os da tabela mesmo com divergências (T01-03 ≈ t1-3), testa três
+  modelos de semivariograma (exponencial, esférico e gaussiano), escolhe o
+  melhor por validação cruzada e gera mapa raster (GeoTIFF) + PNG com legenda
+  em régua, pixel de 5 m. Acione com "krigagem", "interpolar", "mapa de
+  fertilidade", "mapa de produtividade", "agricultura de precisão" ou quando o
+  usuário trouxer pontos de amostragem com valores de um talhão.
 ---
 
-# Krigagem de Solo — do laudo ao mapa de fertilidade (pixel 5 m)
+# Interpolação Krigagem — do dado pontual ao mapa (pixel 5 m)
 
-Transforma laudo de análise de solo + malha de amostragem em **mapas
-interpolados por krigagem ordinária**, um por elemento, prontos para o QGIS
-(GeoTIFF georreferenciado) e para apresentação (PNG com legenda em régua).
+Transforma valores medidos em pontos (análise de solo, produtividade,
+condutividade elétrica, contagem de pragas…) em **mapas interpolados por
+krigagem ordinária**, um por variável, prontos para o QGIS (GeoTIFF
+georreferenciado) e para apresentação (PNG com legenda em régua).
+
+O caso mais comum é o laudo de solo com a malha de amostragem, e por isso a
+tabela de valores é chamada de "laudo" daqui em diante. Serve do mesmo jeito
+para qualquer tabela com uma linha por ponto e uma coluna por variável.
 
 ## Para que serve
 - Casar os IDs do **shape de amostras** com os do **laudo** mesmo quando

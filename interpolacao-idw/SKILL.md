@@ -1,25 +1,35 @@
 ---
-name: interpolacao-idw-solo
+name: interpolacao-idw
 description: >-
-  Mapas de fertilidade do solo por IDW, em classes, com a área de cada classe
-  em hectares e em % e uma apostila em PDF. Entradas: perímetro do talhão ou
-  da fazenda, pontos de amostragem (shapefile/GeoJSON/KML/CSV) e o laudo do
-  laboratório. Casa os IDs do shape com os do laudo mesmo com divergências
-  (T01-03 ≈ t1-3), interpola por IDW e mede o erro por validação cruzada, classifica
-  cada elemento pela tabela oficial (5ª Aproximação de MG ou Boletim 100 de
-  SP) ou por limites do usuário e entrega GeoTIFF, PDF e PNG por elemento mais
-  a apostila com capa e resumo. Acione com "mapa de fertilidade", "IDW",
-  "interpolar análise de solo", "apostila de mapas de solo", "mapa de argila,
-  P, K ou V%" ou quando o usuário trouxer laudo + pontos de amostragem.
+  Mapas interpolados por IDW, em classes, com a área de cada classe em
+  hectares e em % e uma apostila em PDF, para qualquer dado medido em pontos
+  (solo, produtividade, condutividade elétrica, pragas). Entradas: perímetro
+  do talhão ou da fazenda, pontos de amostragem (shapefile/GeoJSON/KML/CSV) e
+  a tabela de valores (o laudo do laboratório, no caso do solo). Casa os IDs
+  do shape com os da tabela mesmo com divergências (T01-03 ≈ t1-3), interpola
+  por IDW e mede o erro por validação cruzada, classifica por limites do
+  usuário ou, em análise de solo, pela tabela oficial (5ª Aproximação de MG ou
+  Boletim 100 de SP) e entrega GeoTIFF, PDF e PNG por variável mais a apostila
+  com capa e resumo. Acione com "IDW", "interpolar", "mapa de fertilidade",
+  "mapa de produtividade", "apostila de mapas", "mapa de argila, P, K ou V%"
+  ou quando o usuário trouxer pontos de amostragem com valores.
 ---
 
-# Interpolação IDW de Solo — do laudo à apostila de mapas
+# Interpolação IDW — do dado pontual à apostila de mapas
 
-Transforma laudo de análise de solo + malha de amostragem em **mapas de
-fertilidade interpolados por IDW e classificados**, um por elemento: a página
-traz o mapa em classes, a legenda com **hectares e % de cada classe**, as
-estatísticas e a fonte da tabela. No fim, uma **apostila em PDF** com capa,
-resumo e um mapa por página.
+Transforma valores medidos em pontos (análise de solo, produtividade,
+condutividade elétrica, contagem de pragas…) em **mapas interpolados por IDW e
+classificados**, um por variável: a página traz o mapa em classes, a legenda
+com **hectares e % de cada classe**, as estatísticas e a fonte das classes. No
+fim, uma **apostila em PDF** com capa, resumo e um mapa por página.
+
+O caso mais comum é o laudo de solo com a malha de amostragem, e por isso a
+tabela de valores é chamada de "laudo" daqui em diante. Para outro dado, o
+fluxo é o mesmo: uma linha por ponto, uma coluna por variável, com a unidade
+no cabeçalho. As tabelas oficiais (MG e SP) valem só para análise de solo; nos
+demais casos, pergunte os limites de classe ao usuário (`--limites`) ou use as
+classes livres, e dê o título da apostila com `--titulo` (ex.: "Mapas de
+produtividade").
 
 ## Para que serve
 - Casar os IDs do **shape de amostras** com os do **laudo** mesmo quando
@@ -33,7 +43,7 @@ resumo e um mapa por página.
 
 ## Para que NÃO serve
 - Não é geoestatística. Se o usuário pedir **krigagem**, semivariograma ou
-  análise de dependência espacial, use a skill `krigagem-solo`.
+  análise de dependência espacial, use a skill `interpolacao-krigagem`.
 - Não conserta malha rala: com menos de 5 pontos o script se recusa; abaixo
   de 15 avisa que o mapa é só um esboço.
 - Não recomenda adubo nem corretivo. Para recomendar, use `5a-aproximacao-mg`
@@ -136,7 +146,7 @@ Coordenadas em metros (UTM) sem `.prj` exigem a zona: `--zona 22S`.
 - **IDW** (esta skill): simples de explicar, roda com poucas amostras, é o que
   a maioria dos softwares de agricultura de precisão usa. O valor da amostra é
   respeitado no ponto e o mapa nunca passa do mínimo e do máximo amostrados.
-- **Krigagem** (`krigagem-solo`): modela a dependência espacial e costuma
+- **Krigagem** (`interpolacao-krigagem`): modela a dependência espacial e costuma
   errar menos quando a malha tem 30 pontos ou mais e há estrutura espacial.
 - Em dúvida, rode as duas e compare o RMSE da validação cruzada, que as duas
   skills informam.

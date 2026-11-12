@@ -482,7 +482,7 @@ def montar_apostila(blocos, ctx, args, grade, saida, data):
 
 
 def principal(argv=None):
-    p = argparse.ArgumentParser(description='Mapas de fertilidade por IDW, em classes, com apostila')
+    p = argparse.ArgumentParser(description='Mapas por IDW de dados pontuais, em classes, com apostila')
     p.add_argument('--perimetro', help='talhão: .kml/.geojson/.shp/.wkt')
     p.add_argument('--pontos', help='amostras: .shp/.geojson/.kml/.csv')
     p.add_argument('--laudo', help='CSV do laudo (uma linha por amostra, unidade no cabeçalho)')
@@ -523,7 +523,8 @@ def principal(argv=None):
                    help='colunas sem tabela: intervalos iguais ou quantis')
     p.add_argument('--n-classes', type=int, default=5, help='nº de classes livres')
     # apresentação
-    p.add_argument('--titulo', default='Mapas de fertilidade do solo')
+    p.add_argument('--titulo', help='título da capa (padrão: "Mapas de fertilidade do solo" com tabela\n'
+                                    'de MG ou SP; senão, "Mapas interpolados")')
     p.add_argument('--fazenda', help='nome da fazenda ou do talhão (capa e subtítulos)')
     p.add_argument('--cliente', help='produtor ou empresa (capa)')
     p.add_argument('--responsavel', help='responsável técnico (rodapé da capa)')
@@ -551,6 +552,9 @@ def principal(argv=None):
             p.error('--potencia: "auto" ou um número entre 0 e 10')
     if args.vizinhos < 1 or args.pixel <= 0:
         p.error('--vizinhos e --pixel precisam ser positivos')
+    if not args.titulo:
+        args.titulo = ('Mapas de fertilidade do solo' if args.tabela in classes.TABELAS
+                       else 'Mapas interpolados')
 
     saida = Path(args.saida)
     saida.mkdir(parents=True, exist_ok=True)

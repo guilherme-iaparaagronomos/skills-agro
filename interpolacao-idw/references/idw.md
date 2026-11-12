@@ -72,7 +72,7 @@ ganho = 1 − RMSE do IDW / RMSE da média
 ## Quando preferir a krigagem
 
 Com 30 pontos ou mais e ganho sobre a média razoável, vale rodar a
-`krigagem-solo` nos mesmos arquivos e comparar o RMSE da validação cruzada. A
+`interpolacao-krigagem` nos mesmos arquivos e comparar o RMSE da validação cruzada. A
 krigagem modela a dependência espacial, suaviza o olho de boi e informa a
 razão pepita/patamar. O IDW ganha em simplicidade e em malhas pequenas, onde o
 semivariograma é frágil.

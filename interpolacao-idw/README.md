@@ -1,9 +1,10 @@
-# Interpolação IDW de Solo
+# Interpolação IDW
 
-Skill que transforma **laudo de análise de solo + malha de amostragem** em
-**mapas de fertilidade por IDW, em classes**, com a área de cada classe em
-hectares e em %, e monta a **apostila em PDF** (capa, resumo e um mapa por
-página).
+Skill que transforma **valores medidos em pontos** (análise de solo,
+produtividade, condutividade elétrica, pragas…) em **mapas por IDW, em
+classes**, com a área de cada classe em hectares e em %, e monta a **apostila
+em PDF** (capa, resumo e um mapa por página). O caso mais comum é o laudo de
+solo com a malha de amostragem.
 
 **O que ela faz:**
 
@@ -40,7 +41,7 @@ página).
 
 ## Instalar
 
-Baixe [`interpolacao-idw-solo.zip`](../../../releases/latest/download/interpolacao-idw-solo.zip)
+Baixe [`interpolacao-idw.zip`](../../../releases/latest/download/interpolacao-idw.zip)
 e envie em **claude.ai → Configurações → Capacidades → Skills**.
 
 ## Avisos
@@ -52,4 +53,4 @@ recomendação são do engenheiro agrônomo responsável (ART). Divergências ou
 melhorias? Abra uma [issue](../../../issues/new/choose).
 
 Quer geoestatística (semivariograma, dependência espacial)? Use a skill
-[`krigagem-solo`](../krigagem-solo/).
+[`interpolacao-krigagem`](../interpolacao-krigagem/).

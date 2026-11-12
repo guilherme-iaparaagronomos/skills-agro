@@ -1,9 +1,10 @@
-# Krigagem de Solo
+# Interpolação Krigagem
 
-Skill que transforma **laudo de análise de solo + malha de amostragem** em
-**mapas de fertilidade interpolados por krigagem ordinária** — um GeoTIFF
-georreferenciado (pixel 5 m, SIRGAS 2000/UTM) e um PNG com legenda em régua
-por elemento escolhido pelo usuário.
+Skill que transforma **valores medidos em pontos** (análise de solo,
+produtividade, condutividade elétrica, pragas…) em **mapas interpolados por
+krigagem ordinária** — um GeoTIFF georreferenciado (pixel 5 m, SIRGAS
+2000/UTM) e um PNG com legenda em régua por variável escolhida pelo usuário.
+O caso mais comum é o laudo de solo com a malha de amostragem.
 
 **O que ela faz:**
 
@@ -33,7 +34,7 @@ por elemento escolhido pelo usuário.
 
 ## Instalar
 
-Baixe [`krigagem-solo.zip`](../../../releases/latest/download/krigagem-solo.zip)
+Baixe [`interpolacao-krigagem.zip`](../../../releases/latest/download/interpolacao-krigagem.zip)
 e envie em **claude.ai → Configurações → Capacidades → Skills**.
 
 ## Avisos

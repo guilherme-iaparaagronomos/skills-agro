@@ -33,7 +33,7 @@ fiscais e data de cadastro** — um número de cada vez no chat, ou uma
   Fallback: baixar o shapefile oficial pelo site (aí com reCAPTCHA que o
   **usuário** resolve — a skill nunca burla) e resumir com
   `scripts/feicoes.py`. Ambos entregam perímetro pronto para o QGIS e para
-  a skill `krigagem-solo`.
+  a skill `interpolacao-krigagem`.
 
 ## Estrutura
 

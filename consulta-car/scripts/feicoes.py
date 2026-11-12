@@ -19,7 +19,7 @@ Uso:
 
 Somente biblioteca padrão (sem GDAL). O GeoJSON do perímetro serve de
 entrada para `converter.py` (→ shapefile empacotado + KML) e para a skill
-`krigagem-solo`.
+`interpolacao-krigagem`.
 
 POR QUE ESTE SCRIPT MUDOU (25/08): a versão anterior lia só o índice do zip
 RAIZ e, com o pacote aninhado do SICAR, terminava em "nenhum .shp
@@ -359,7 +359,7 @@ def main() -> None:
         geo = destino / f"{perimetro_shp.stem}.geojson"
         print(f"\nperímetro: {geo}")
         print(f"  shapefile + KML:  python converter.py \"{geo}\"")
-        print("  krigagem-solo:    use este GeoJSON como --perimetro")
+        print("  interpolacao-krigagem:    use este GeoJSON como --perimetro")
 
 
 if __name__ == "__main__":
