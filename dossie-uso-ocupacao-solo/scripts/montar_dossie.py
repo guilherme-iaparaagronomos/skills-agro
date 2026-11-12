@@ -53,10 +53,12 @@ FIGURAS_CONHECIDAS = [
     (r'prodes_deter', 'PRODES e DETER no perímetro', 'prodes'),
     (r'relevo_altitude', 'Relevo: altitude e curvas de nível', 'relevo'),
     (r'relevo_declividade', 'Relevo: declividade', 'relevo'),
+    (r'^restricoes\.', 'Restrições: unidades de conservação, terras indígenas e termos de embargo', 'restricoes'),
+    (r'solo_textura_carbono', 'Solo: textura e carbono (estimativa do SoilGrids)', 'solo'),
 ]
 # o que vale baixar dos links das ferramentas (o resto — GeoPackage, curvas — é para o QGIS)
 BAIXAR = re.compile(r'^(uso_solo_(situacao|mapas|historico)|cobertura_(classes|confianca)|prodes_deter'
-                    r'|relevo_(altitude|declividade))\.png$'
+                    r'|relevo_(altitude|declividade)|restricoes|solo_textura_carbono)\.png$'
                     r'|^rgb_\d{4}-\d{2}-\d{2}\.tif$')
 TETO_DO_ARQUIVO = 12 * 1024 * 1024
 ASSINATURAS = {'.png': (b'\x89PNG',), '.tif': (b'II*\x00', b'MM\x00*')}
@@ -181,6 +183,8 @@ def principal(argv=None):
     p.add_argument('--prodes', help='texto de prodes_fazenda')
     p.add_argument('--relevo', help='texto de relevo_fazenda')
     p.add_argument('--imagem', help='texto de imagem_satelite (data da cena)')
+    p.add_argument('--restricoes', help='texto de restricoes_fazenda (unidades de conservação, terras indígenas, embargos)')
+    p.add_argument('--solo', help='texto de solo_textura_carbono (SoilGrids: textura e carbono, valores modelados)')
     p.add_argument('--car', help='car.json gerado por car.py')
     p.add_argument('--car-temas', help='car-temas.geojson gerado por car.py')
     p.add_argument('--figuras', help='pasta com os mapas gerados pelas ferramentas')
@@ -212,8 +216,14 @@ def principal(argv=None):
     prodes = _ler(args.prodes, leitura.ler_prodes, avisos)
     relevo = _ler(args.relevo, leitura.ler_relevo, avisos)
     imagem = _ler(args.imagem, leitura.ler_imagem, avisos)
+    restricoes = _ler(args.restricoes, leitura.ler_restricoes, avisos)
+    solo = _ler(args.solo, leitura.ler_solo, avisos)
+    if solo and not solo.get('superficie'):
+        solo = None  # texto que não é da ferramenta: a seção não sai (o aviso já foi registrado)
+    if restricoes and not any(restricoes[g]['lida'] for g in ('uc', 'ti', 'embargo')) and restricoes['area_ha'] is None:
+        restricoes = None
     avisos.extend(leitura.conferir_areas({'uso do solo': uso, 'cobertura do solo': cobertura,
-                                          'PRODES': prodes, 'relevo': relevo}))
+                                          'PRODES': prodes, 'relevo': relevo, 'restrições': restricoes, 'solo': solo}))
     cadastro = json.loads(Path(args.car).read_text(encoding='utf-8')) if args.car else None
     if cadastro and cadastro.get('area_declarada_ha') and uso.get('area_ha'):
         a, b = cadastro['area_declarada_ha'], uso['area_ha']
@@ -235,7 +245,7 @@ def principal(argv=None):
                    'perímetro sem nuvem') if imagem else None,
     }
     dados = {'uso': uso, 'cobertura': cobertura, 'prodes': prodes, 'relevo': relevo, 'imagem': imagem,
-             'car': cadastro}
+             'restricoes': restricoes, 'solo': solo, 'car': cadastro}
 
     folhas = [paginas.pagina_identificacao(doc, dados, aneis, zona_txt)]
     if cadastro:
@@ -249,16 +259,23 @@ def principal(argv=None):
         folhas.append(paginas.pagina_comparacao(doc, cadastro, uso))
     if relevo:
         folhas.append(paginas.pagina_relevo(doc, relevo))
+    if restricoes:
+        folhas += paginas.paginas_restricoes(doc, restricoes)
+    if solo:
+        folhas.append(paginas.pagina_solo(doc, solo))
 
     fonte_de = {'uso': uso['fonte'], 'prodes': (prodes or {}).get('fonte'), 'relevo': (relevo or {}).get('fonte'),
-                'cobertura': (cobertura or {}).get('fonte'), 'imagem': None}
+                'cobertura': (cobertura or {}).get('fonte'), 'imagem': None,
+                'restricoes': (restricoes or {}).get('fonte'),
+                'solo': (f"{solo['fonte']}, licença {solo['licenca']}; valores modelados, pixel de 250 m" if solo else None)}
     if imagem:
         fonte_de['imagem'] = (f"{imagem['fonte']}; cena de {imagem['data']}, "
                               f"{paginas.br(imagem['livre_pct'])} % do perímetro sem nuvem")
     # figuras: a pasta do usuário ou, sem ela, o que der para baixar pelos links dos textos
     pasta_figuras, notas = (Path(args.figuras) if args.figuras else None), []
     if not pasta_figuras and not args.sem_baixar:
-        textos = [Path(c).read_text(encoding='utf-8') for c in (args.imagem, args.uso, args.cobertura, args.prodes, args.relevo) if c]
+        textos = [Path(c).read_text(encoding='utf-8') for c in (args.imagem, args.uso, args.cobertura, args.prodes, args.relevo, args.restricoes,
+                            args.solo) if c]
         baixados, falhas = baixar_figuras(textos, Path(args.saida) / 'figuras')
         if baixados:
             pasta_figuras = Path(args.saida) / 'figuras'
@@ -291,6 +308,13 @@ def principal(argv=None):
         fontes.append(('Relevo', relevo['fonte'] + '.'))
     if imagem:
         fontes.append(('Imagem de satélite', fonte_de['imagem'] + '.'))
+    if restricoes:
+        datas = ' · '.join(f'{nome}: {g["data"]}' for nome, g in (('CNUC', restricoes['uc']), ('FUNAI', restricoes['ti']),
+                                                                     ('embargos', restricoes['embargo'])) if g['lida'] and g['data'])
+        fontes.append(('Unidades de conservação, terras indígenas e termos de embargo',
+                       f'{restricoes["fonte"]}: bases públicas' + (f'; data de cada base — {datas}.' if datas else '.')))
+    if solo:
+        fontes.append(('Solo (textura e carbono)', fonte_de['solo'] + '.'))
     if cadastro:
         fontes.append(('Cadastro Ambiental Rural', 'Consulta pública do SICAR (consulta.car.gov.br), feita em '
                        f'{paginas._data_br(cadastro.get("consultado_em"))}.'))
@@ -335,6 +359,13 @@ def principal(argv=None):
         for t in (cadastro or {}).get('temas', []):
             if 'area_ha' in t:
                 w.writerow(['CAR declarado', t['camada'], t['rotulo'], paginas.br(t['area_ha'], 2), 'ha'])
+        for nome, chave in (('unidades de conservação', 'uc'), ('terras indígenas', 'ti'), ('termos de embargo', 'embargo')):
+            g = (restricoes or {}).get(chave)
+            if g and g['lida']:
+                w.writerow(['restrições', g['data'] or '', f'{nome}: {g["n"]} sobrepõe(m)', paginas.br(g['ha']), 'ha'])
+        for c in (solo or {}).get('camadas', []):
+            w.writerow(['solo (estimativa SoilGrids)', c['camada'], f'argila; textura {c["textura"]}', paginas.br(c['argila']), '%'])
+            w.writerow(['solo (estimativa SoilGrids)', c['camada'], 'carbono orgânico', paginas.br(c['carbono_g_kg']), 'g/kg'])
 
     print(f'dossiê: {saida / "dossie.pdf"} ({len(folhas)} páginas, {n_figuras} figura(s))')
     for nota in notas:
@@ -396,13 +427,61 @@ ENCOSTA ACIMA DE 45° (APP de encosta pelo Código Florestal): nenhuma na leitur
 
 Cite a fonte como está: ANADEM v1 (UFRGS/ANA), derivado do Copernicus DEM GLO-30.
 ''', encoding='utf-8')
+    (saida / 'restricoes.txt').write_text('''Área completa — 520 ha. RESTRIÇÕES que a área sobrepõe ou que ficam perto dela, pelas bases públicas: unidades de conservação (CNUC, MMA), terras indígenas (FUNAI) e embargos (IBAMA e ICMBio).
+
+UNIDADES DE CONSERVAÇÃO (CNUC, MMA, versão de 31/07/2026):
+1 unidade(s) sobrepõe(m) a área: 130 ha, 25% dela (o que se sobrepõe entre unidades conta uma vez).
+- Área de Proteção Ambiental Exemplo — Área de Proteção Ambiental, uso sustentável, esfera estadual, criada em 1983; plano de manejo: sim; 130 ha na área (25%); a unidade inteira tem 83.310 ha
+PERTO (até 10 km da divisa): 1 unidade(s).
+- Parque Estadual Exemplo (Parque, proteção integral, esfera estadual) a 2,88 km
+
+TERRAS INDÍGENAS (FUNAI, base atualizada até 10/11/2026):
+Nenhuma terra indígena sobrepõe a área.
+Nenhuma terra indígena a até 10 km da divisa.
+
+EMBARGOS (IBAMA, base atualizada até 11/11/2026; ICMBio, até 31/10/2026):
+2 termo(s) de embargo toca(m) a área: 1 com contorno (12,4 ha dentro da área, 2,4% dela) e 1 marcado(s) por ponto.
+- IBAMA, termo 000001-C, de 20/10/2010 — tipo não informado na base; contorno com 12,4 ha dentro da área (2,4%); área embargada declarada no termo: 57,2 ha (Município Exemplo/SP)
+- IBAMA, termo 000002-E, de 26/09/2014 — desmatamento; marcado por PONTO dentro da área (o órgão registrou a coordenada, não o contorno); área embargada declarada no termo: 1 ha (Município Exemplo/SP)
+Nenhum termo de embargo a até 1 km da divisa.
+Ficam de fora do cruzamento os embargos que a base do IBAMA traz SEM localização (13.767 hoje): estes só aparecem na consulta pública do órgão.
+
+O QUE ESTA LEITURA NÃO COBRE: territórios quilombolas, assentamentos, florestas públicas, embargos de órgãos estaduais e a zona de amortecimento de cada unidade (definida no plano de manejo dela). Para supressão de vegetação nativa existe o PRODES (prodes_fazenda).
+Cite a fonte como está: CNUC (MMA), FUNAI, IBAMA e ICMBio. Leitura informativa das bases públicas, na data de cada uma.
+''', encoding='utf-8')
+    (saida / 'solo.txt').write_text('''Área completa — 520 ha. TEXTURA E CARBONO DO SOLO pelo SoilGrids 2.0 (ISRIC): mapa MUNDIAL feito por modelo, com pixel de 250 m (96 pixel(s) tocam a área).
+
+CAMADA DE 0–30 cm (média pesada pela espessura): argila 35,5%, areia 46,9%, silte 17,6% — textura argilosa; carbono orgânico 16,4 g/kg (cerca de 2,8% de matéria orgânica).
+CAMADA DE 30–100 cm: argila 43,9%, areia 40,1%, silte 16% — textura argilosa; carbono orgânico 7,3 g/kg (cerca de 1,3% de matéria orgânica).
+ESTOQUE DE CARBONO ORGÂNICO DE 0–30 cm: 36,3 t de carbono por hectare — cerca de 18.876 t de carbono nos 520 ha com dado.
+DENTRO DA ÁREA: a argila de 0–30 cm vai de 33,2% a 41,5% (a maior parte entre 34% e 39,8%) e o estoque de carbono, de 31 a 46 t/ha.
+FAIXA DE 90% DO PRÓPRIO MODELO, em cada pixel: argila de 0–30 cm entre 4,6% e 75%; estoque entre 10,4 e 86,6 t/ha. A faixa é larga: é o tamanho da incerteza do mapa.
+
+POR CAMADA:
+- 0–5 cm: argila 33,2%, areia 47,3%, silte 19,5% — textura média; carbono orgânico 23,4 g/kg (cerca de 4% de matéria orgânica)
+- 5–15 cm: argila 34,8%, areia 47%, silte 18,2% — textura média; carbono orgânico 17,9 g/kg (cerca de 3,1% de matéria orgânica)
+- 15–30 cm: argila 37%, areia 46,6%, silte 16,4% — textura argilosa; carbono orgânico 12,9 g/kg (cerca de 2,2% de matéria orgânica)
+- 30–60 cm: argila 42,5%, areia 41,3%, silte 16,2% — textura argilosa; carbono orgânico 8,6 g/kg (cerca de 1,5% de matéria orgânica)
+- 60–100 cm: argila 45%, areia 39,2%, silte 15,8% — textura argilosa; carbono orgânico 6,3 g/kg (cerca de 1,1% de matéria orgânica)
+- 100–200 cm: argila 45,8%, areia 38,6%, silte 15,6% — textura argilosa; carbono orgânico 4,9 g/kg (cerca de 0,8% de matéria orgânica)
+
+Cite a fonte como está: SoilGrids 2.0 (ISRIC — World Soil Information), licença CC BY 4.0. Mapa mundial de 250 m, valores modelados.
+''', encoding='utf-8')
     codigo = principal(['--perimetro', str(saida / 'perimetro.geojson'), '--nome', 'Fazenda Demonstração (dados inventados)',
                         '--uso', str(saida / 'uso.txt'), '--prodes', str(saida / 'prodes.txt'),
-                        '--relevo', str(saida / 'relevo.txt'), '--municipio', 'Município Exemplo/SP',
+                        '--relevo', str(saida / 'relevo.txt'), '--restricoes', str(saida / 'restricoes.txt'),
+                        '--solo', str(saida / 'solo.txt'), '--municipio', 'Município Exemplo/SP', '--sem-baixar',
                         '--saida', str(saida)])
     lido = json.loads((saida / 'dossie.json').read_text(encoding='utf-8'))
     assert lido['avisos'] == [], lido['avisos']
     assert lido['prodes']['faixas']['depois_2019']['ha'] == 9.6 and len(lido['prodes']['poligonos']) == 3
+    assert lido['restricoes']['uc']['ha'] == 130 and lido['restricoes']['embargo']['n_ponto'] == 1
+    assert lido['restricoes']['ti']['lida'] and lido['restricoes']['ti']['n'] == 0
+    assert lido['solo']['superficie']['argila'] == 35.5 and len(lido['solo']['camadas']) == 6
+    assert [n for n, _ in links_dos_arquivos('- restricoes.png (90 KB): https://127.0.0.1:9/a/restricoes.png\n'
+                                             '- solo_0_30cm.tif (40 KB): https://127.0.0.1:9/a/solo_0_30cm.tif')] \
+        == ['restricoes.png', 'solo_0_30cm.tif']
+    assert BAIXAR.match('restricoes.png') and BAIXAR.match('solo_textura_carbono.png') and not BAIXAR.match('solo_0_30cm.tif')
     assert (saida / 'dossie.pdf').stat().st_size > 30000
     # links: só https, só os arquivos da lista; falha de rede vira aviso, não erro
     exemplo = ('- uso_solo_situacao.png (126 KB): https://127.0.0.1:9/a/uso_solo_situacao.png?token=x\n'

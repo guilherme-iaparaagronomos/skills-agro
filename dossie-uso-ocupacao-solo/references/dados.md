@@ -66,20 +66,57 @@ Conferência: as classes somam 100% (tolerância de 1,5).
 `Cena Sentinel-2 de 2026-10-27, com 99.7% da área livre de nuvem (fonte: …).`
 → data da cena, percentual e fonte.
 
+## restricoes_fazenda → `--restricoes`
+
+Três blocos, cada um com cabeçalho próprio, e a mesma forma por dentro:
+
+| Linha do texto | O que vira |
+|---|---|
+| `UNIDADES DE CONSERVAÇÃO (CNUC, MMA, versão de DD/MM/AAAA):` | data da base |
+| `N unidade(s) sobrepõe(m) a área: X ha, Y% dela` ou `Nenhuma unidade de conservação sobrepõe a área.` | total do bloco |
+| `- Nome — categoria, grupo, esfera E, criada em AAAA; plano de manejo: …; X ha na área (Y%); a unidade inteira tem Z ha` | uma unidade |
+| `PERTO (até 10 km da divisa): N unidade(s).` e as linhas `- Nome (categoria, grupo, esfera E) a X km` | o que fica perto |
+| `TERRAS INDÍGENAS (FUNAI, base atualizada até DD/MM/AAAA):` | mesmo desenho; cada terra traz etnia e fase do processo |
+| `EMBARGOS (IBAMA, base atualizada até …; ICMBio, até …):` | datas das duas bases |
+| `N termo(s) de embargo toca(m) a área: A com contorno (X ha dentro da área, Y% dela) e B marcado(s) por ponto.` | total do bloco |
+| `- ÓRGÃO, termo NÚMERO, de DD/MM/AAAA — tipo; contorno com X ha dentro da área (Y%)` ou `marcado por PONTO dentro da área`; `área embargada declarada no termo: Z ha (Município/UF)` | um termo, sem nome nem documento de pessoa |
+| `A base não pôde ser lida nesta consulta` | o bloco sai como "base não lida" |
+| `O QUE ESTA LEITURA NÃO COBRE: …` | copiada na nota da página |
+
+Conferências: a quantidade de itens lidos bate com o total do bloco (o texto
+traz no máximo 12 unidades, 12 terras e 15 termos); termos com contorno e por
+ponto somam o total.
+
+## solo_textura_carbono → `--solo`
+
+| Linha do texto | O que vira |
+|---|---|
+| `… (N pixel(s) tocam a área)` | pixels de 250 m |
+| `CAMADA DE 0–30 cm (média pesada pela espessura): argila A%, areia B%, silte C% — textura T; carbono orgânico X g/kg (cerca de Y% de matéria orgânica).` | camada de cima |
+| `CAMADA DE 30–100 cm: …` | camada de baixo |
+| `ESTOQUE DE CARBONO ORGÂNICO DE 0–30 cm: X t de carbono por hectare — cerca de Y t de carbono nos Z ha com dado.` | estoque |
+| `DENTRO DA ÁREA: a argila de 0–30 cm vai de …` | variação entre os pixels |
+| `FAIXA DE 90% DO PRÓPRIO MODELO, em cada pixel: …` | a incerteza que o mapa informa |
+| as linhas depois de `POR CAMADA:` | tabela por profundidade |
+| `ÁREA PEQUENA PARA ESTE MAPA` | nota de menos de 4 pixels |
+
+Conferência: argila + areia + silte somam 100% em cada camada (tolerância de 1,5).
+
 ## Arquivos das ferramentas (figuras)
 
 No fim de cada texto vem a lista `- nome.ext (NN KB): https://…`. O script
 baixa só estes: `uso_solo_situacao.png`, `uso_solo_mapas.png`,
 `uso_solo_historico.png`, `cobertura_classes.png`, `cobertura_confianca.png`,
 `prodes_deter.png`, `relevo_altitude.png`,
-`relevo_declividade.png` e `rgb_AAAA-MM-DD.tif`. Regras: só `https`, até 12 MB
+`relevo_declividade.png`, `restricoes.png`, `solo_textura_carbono.png` e
+`rgb_AAAA-MM-DD.tif`. Regras: só `https`, até 12 MB
 por arquivo, e o conteúdo precisa ser mesmo PNG ou TIFF. GeoPackage, curvas de
 nível e os GeoTIFFs de relevo não são baixados: são para o QGIS. Falha de rede
 não derruba o dossiê; a saída diz o que faltou.
 
 ## Entre as ferramentas
 
-- as áreas informadas por uso do solo, cobertura, PRODES e relevo diferem menos de 1%
+- as áreas informadas por uso do solo, cobertura, PRODES, relevo, restrições e solo diferem menos de 1%
   (senão os textos não são do mesmo perímetro);
 - a área declarada no CAR e a do perímetro analisado diferem menos de 3%
   (senão o perímetro pode não ser o do CAR informado).

@@ -5,9 +5,11 @@ description: >-
   fatos e a fonte de cada um. Reúne o uso do solo de 1985 a hoje e a situação
   frente às datas-marco de 2008, 2019 e 2020 (MapBiomas), a cobertura do solo
   dos últimos 12 meses (Dynamic World), a supressão mapeada pelo INPE (PRODES
-  e DETER), o relevo e, quando há o número do CAR, o que o
-  cadastro declara (situação, reserva legal, vegetação nativa, área
-  consolidada, APP) ao lado do que os mapas mostram. Parte do número do CAR
+  e DETER), o relevo, as unidades de conservação, terras indígenas e termos de
+  embargo que o perímetro sobrepõe, a textura e o carbono do solo estimados
+  (SoilGrids) e, quando há o número do CAR, o que o cadastro declara
+  (situação, reserva legal, vegetação nativa, área consolidada, APP) ao lado
+  do que os mapas mostram. Parte do número do CAR
   (busca o perímetro no SICAR), de um arquivo de perímetro ou de uma fazenda
   salva. Usa o conector ClaudIA Sat. Não avalia nem recomenda. Acione com
   "dossiê do imóvel", "uso e ocupação do solo", "histórico de uso da fazenda",
@@ -18,8 +20,10 @@ description: >-
 # Dossiê de uso e ocupação do solo
 
 Junta num PDF o que bases públicas e mapeamentos por satélite registram sobre
-um imóvel: uso do solo ano a ano, datas-marco, PRODES e DETER, relevo e as
-declarações do CAR. Cada número sai com a fonte e o ano.
+um imóvel: uso do solo ano a ano, datas-marco, PRODES e DETER, relevo,
+unidades de conservação, terras indígenas, termos de embargo, a estimativa de
+textura e carbono do solo e as declarações do CAR. Cada número sai com a fonte
+e a data.
 
 ## A regra que vale para tudo: só fatos
 
@@ -33,11 +37,21 @@ O dossiê **mostra o dado e para aí**. Você também:
 - Diferença entre o declarado e o observado é uma subtração, não um achado.
 - Se o usuário pedir a conclusão, entregue os dados e devolva a decisão ao
   responsável técnico, que conhece a área.
+- **Restrições**: diga "pelas bases públicas, na data de cada uma". Não é
+  certidão. Estar dentro de uma unidade de uso sustentável (uma APA, por
+  exemplo) não quer dizer que a atividade seja proibida: as regras são de cada
+  unidade. Os termos de embargo vêm **sem nome e sem documento de pessoa**:
+  não procure, não deduza nem escreva quem é o embargado; o número do termo
+  serve para o usuário conferir no órgão.
+- **Solo**: é estimativa de um mapa mundial de 250 m (SoilGrids), não
+  medição. Diga isso junto do primeiro número. Não recomende calagem,
+  adubação, cultura nem manejo a partir dele, e não trate o estoque de carbono
+  como crédito de carbono. Se o usuário tem análise de solo, a análise vale.
 
 ## O que precisa estar disponível
 
 - **Conector ClaudIA Sat** (comunidade agrônomo10X) ligado na IA: é ele que
-  devolve uso do solo, PRODES, relevo e imagem. Sem ele não há dossiê: avise o
+  devolve uso do solo, PRODES, relevo, restrições, solo e imagem. Sem ele não há dossiê: avise o
   usuário e pare.
 - **Perímetro**, por um destes três caminhos:
   1. **Número do CAR** → `scripts/car.py` busca o polígono e as declarações no
@@ -64,11 +78,17 @@ O dossiê **mostra o dado e para aí**. Você também:
      (demora cerca de um minuto);
    - `prodes_fazenda`;
    - `relevo_fazenda`;
+   - `restricoes_fazenda` — unidades de conservação, terras indígenas e
+     termos de embargo que o perímetro sobrepõe ou que ficam perto;
+   - `solo_textura_carbono` — textura e carbono estimados pelo SoilGrids;
    - `imagem_satelite` (produto `rgb`) — só para registrar a data da cena mais
      recente sem nuvem.
-   As quatro primeiras consomem hectares da franquia do usuário: avise antes.
+   As seis primeiras consomem hectares da franquia do usuário: avise antes.
+   Se alguma não existir no conector do usuário, monte sem ela e diga qual
+   seção ficou de fora.
 4. **Grave o texto de cada ferramenta num arquivo, COMO VEIO**: `uso.txt`,
-   `cobertura.txt`, `prodes.txt`, `relevo.txt`, `imagem.txt`. Copie o texto inteiro, sem
+   `cobertura.txt`, `prodes.txt`, `relevo.txt`, `restricoes.txt`, `solo.txt`,
+   `imagem.txt`. Copie o texto inteiro, sem
    resumir, reordenar, traduzir nem arredondar, **com a lista de arquivos e os
    links**. O script lê os números desse texto e confere as somas (um número
    trocado na cópia aparece como aviso) e usa os links para buscar os mapas.
@@ -76,7 +96,8 @@ O dossiê **mostra o dado e para aí**. Você também:
 5. **Monte**:
    `python scripts/montar_dossie.py --perimetro ./dossie/perimetro.geojson
    --nome "Fazenda Exemplo" --uso uso.txt --cobertura cobertura.txt --prodes
-   prodes.txt --relevo relevo.txt --imagem imagem.txt --car ./dossie/car.json --car-temas
+   prodes.txt --relevo relevo.txt --restricoes restricoes.txt --solo solo.txt
+   --imagem imagem.txt --car ./dossie/car.json --car-temas
    ./dossie/car-temas.geojson --saida ./dossie --png`
    Sem CAR, tire `--car` e `--car-temas` e informe `--municipio "Cidade/UF"`.
 6. **Leia a saída do script.** "conferências de soma: tudo fechou" = pode
@@ -100,8 +121,28 @@ O dossiê **mostra o dado e para aí**. Você também:
      `--figuras ./figuras`. O script reconhece pelo nome: `rgb_AAAA-MM-DD.tif`,
      `uso_solo_situacao`, `uso_solo_mapas`, `uso_solo_historico`,
      `cobertura_classes`, `cobertura_confianca`, `prodes_deter`,
-     `relevo_altitude`, `relevo_declividade`.
-   - Outra imagem entra com `--figura "Legenda=arquivo.png"`.
+     `relevo_altitude`, `relevo_declividade`, `restricoes`,
+     `solo_textura_carbono`.
+   - Outra imagem entra com `--figura "Legenda=arquivo.png"`. É assim que
+     entra a imagem de 2 m da `imagem_cbers`, se o usuário quiser:
+     `--figura "Imagem de 2 m (CBERS-4A, INPE), cena de DD/MM/AAAA=arquivo.png"`.
+
+## O dossiê pronto pelo conector (`dossie_pdf`)
+
+A ClaudIA Sat também tem a ferramenta `dossie_pdf`, que monta no servidor um
+dossiê com estas mesmas seções a partir do número do CAR, de um perímetro ou
+de uma fazenda salva, em menos de um minuto, já com os mapas. Se ela aparecer
+no conector do usuário, **conte que existem os dois caminhos e deixe ele
+escolher**:
+
+- `dossie_pdf`: mais rápido, uma chamada só, não depende de internet no
+  ambiente de código.
+- esta skill: entrega também as tabelas em CSV e os números em JSON, aceita
+  figuras do usuário, tem o tema escuro e funciona quando só algumas
+  ferramentas estão disponíveis.
+
+As regras de "só fatos" valem igual para os dois. Não cole página de um no
+outro.
 
 ## O que sai no PDF
 
@@ -115,15 +156,21 @@ O dossiê **mostra o dado e para aí**. Você também:
 | PRODES e DETER | polígonos por período, frente ao mínimo da nota do MMA, alertas | INPE |
 | Declarado × observado | área, vegetação nativa e uso anterior a 2008: os dois números e a diferença | SICAR e MapBiomas |
 | Relevo | altitude, declive, classes da Embrapa, faixas de mecanização | modelo de terreno de 30 m |
+| Restrições | o que o perímetro sobrepõe e o que fica perto, com a data de cada base; termos de embargo pelo número | CNUC (MMA), FUNAI, IBAMA e ICMBio |
+| Solo | argila, areia, silte, textura e carbono por profundidade, estoque de carbono de 0–30 cm e a faixa do próprio modelo | SoilGrids 2.0 (ISRIC) |
 | Figuras | a imagem de satélite e os mapas das ferramentas, uma por página | a da figura |
 | Fontes e limites | cada fonte, datas, limites e as observações da montagem | — |
 
-Bloco sem dado não aparece: sem CAR não há as páginas do CAR nem a comparação.
+Bloco sem dado não aparece: sem CAR não há as páginas do CAR nem a comparação;
+sem o texto de uma ferramenta, a seção dela não sai. Base de restrição que a
+ferramenta não conseguiu ler sai como "base não lida", nunca como "nenhuma".
 
 ## Sigilo das fontes
 
 Cite as fontes exatamente como as ferramentas mandam (MapBiomas Coleção N;
-Dynamic World; PRODES e DETER do INPE; ANADEM/Copernicus DEM; Sentinel-2). Sobre como o dado
+Dynamic World; PRODES e DETER do INPE; ANADEM/Copernicus DEM; CNUC (MMA),
+FUNAI, IBAMA e ICMBio; SoilGrids 2.0 (ISRIC), licença CC BY 4.0; Sentinel-2).
+Sobre como o dado
 é processado, a única frase é: processado pelas ferramentas da comunidade
 agrônomo10X (OagronomIA). Não deduza nem cite plataforma, biblioteca ou nuvem.
 
@@ -147,8 +194,11 @@ agrônomo10X (OagronomIA). Não deduza nem cite plataforma, biblioteca ou nuvem.
   cada módulo (`car.py --teste`).
 - A `monitorar_cobertura` (mudança da cobertura no tempo) não entra no dossiê:
   é acompanhamento, não retrato. Ofereça à parte se o usuário pedir.
-- Restrições (unidades de conservação, embargos, terras indígenas) e dados de
-  solo ainda não têm ferramenta na ClaudIA Sat. Se o usuário pedir, diga que
-  o dossiê não cobre; não busque por conta própria nem estime.
+- As restrições não cobrem territórios quilombolas, assentamentos, florestas
+  públicas, embargos de órgãos estaduais nem a zona de amortecimento das
+  unidades; a página diz isso. Se o usuário pedir, diga que o dossiê não
+  cobre; não busque por conta própria.
+- A página de restrições lista até 12 unidades, 12 terras e 15 termos (é o
+  que o texto da ferramenta traz); o GeoPackage da ferramenta tem todos.
 - Formato dos textos lidos e o que cada conferência faz: `references/dados.md`.
 - Fontes, datas-marco e limites: `references/fontes.md`.

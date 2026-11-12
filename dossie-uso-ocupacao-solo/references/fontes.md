@@ -75,6 +75,39 @@ página diz o que é cada fonte e até onde ela vai.
   levantamento topográfico. As faixas de mecanização são referência técnica
   usual, não regra.
 
+## Unidades de conservação, terras indígenas e termos de embargo
+
+- **O que é**: três bases públicas cruzadas com o perímetro. Unidades de
+  conservação: Cadastro Nacional de Unidades de Conservação (CNUC), do
+  Ministério do Meio Ambiente. Terras indígenas: FUNAI. Termos de embargo:
+  IBAMA e ICMBio.
+- **O que o dossiê mostra**: o que sobrepõe o perímetro (quantos, hectares e
+  % da área) e o que fica perto (até 10 km para unidade de conservação e terra
+  indígena; até 1 km para termo de embargo), com a data de cada base.
+- **Termos de embargo**: aparecem pelo número, sem nome e sem documento de
+  pessoa. Há termo com contorno e termo marcado só por um ponto (o órgão
+  registrou a coordenada, não o contorno). A base do IBAMA tem termos sem
+  localização, que não entram no cruzamento.
+- **Limites**: é a leitura das bases na data de cada uma; não equivale a
+  certidão e não substitui a consulta ao órgão. Ficam de fora territórios
+  quilombolas, assentamentos, florestas públicas, embargos de órgãos estaduais
+  e a zona de amortecimento de cada unidade. Estar dentro de unidade de uso
+  sustentável não diz, por si, o que é permitido: as regras são de cada unidade.
+
+## Solo: textura e carbono (SoilGrids)
+
+- **O que é**: SoilGrids 2.0, mapa mundial de solos do ISRIC (World Soil
+  Information), feito por modelo, com pixel de 250 m. Licença CC BY 4.0.
+- **O que o dossiê mostra**: argila, areia, silte, classe textural (grupamento
+  da Embrapa) e carbono orgânico por profundidade; o estoque de carbono de
+  0–30 cm; a variação entre os pixels do perímetro e a faixa de 90% que o
+  próprio modelo informa.
+- **Limites**: são valores modelados, não medições. O ISRIC informa que o
+  mapa não foi feito para a escala de fazenda, e os valores tendem ao meio da
+  faixa (solo muito arenoso ou muito argiloso costuma sair como médio). Não
+  substitui análise de solo. O estoque de carbono não equivale a crédito de
+  carbono. A matéria orgânica é o carbono × 1,724 (conversão convencional).
+
 ## Imagem de satélite (Sentinel-2)
 
 O dossiê registra a data da cena mais recente sem nuvem e o percentual do

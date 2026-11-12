@@ -18,6 +18,13 @@ com a fonte e o ano. Não avalia, não conclui e não recomenda.
   mínimo da nota do MMA, e os alertas.
 - **Declarado no CAR × observado no mapeamento**: os dois números e a diferença.
 - **Relevo**: altitude, declive, classes da Embrapa e faixas de mecanização.
+- **Restrições**: unidades de conservação (CNUC, MMA), terras indígenas
+  (FUNAI) e termos de embargo (IBAMA e ICMBio) que o perímetro sobrepõe ou que
+  ficam perto, com a data de cada base. Os termos de embargo saem pelo número,
+  sem nome nem documento de pessoa.
+- **Solo** (SoilGrids, ISRIC): textura e carbono por profundidade e o estoque
+  de carbono de 0–30 cm. É estimativa de um mapa mundial de 250 m, não
+  medição, e sai com a faixa de incerteza do próprio modelo.
 
 Parte do **número do CAR** (a skill busca o perímetro no SICAR), de um
 **arquivo de perímetro** ou de uma **fazenda salva** na conta.
@@ -25,7 +32,10 @@ Parte do **número do CAR** (a skill busca o perímetro no SICAR), de um
 ## O que precisa
 
 - O conector **ClaudIA Sat** da comunidade agrônomo10X ligado na sua IA: é
-  dele que vêm o uso do solo, o PRODES, o relevo e a imagem.
+  dele que vêm o uso do solo, o PRODES, o relevo, as restrições, o solo e a
+  imagem. O mesmo conector tem a ferramenta `dossie_pdf`, que monta um
+  dossiê parecido direto no servidor; a skill serve para quem quer também as
+  tabelas, os números em JSON e as próprias figuras.
 - Para buscar o CAR pelo número e para os mapas entrarem sozinhos no PDF, um
   ambiente de código com internet (Claude Code, Cowork). Na sandbox do chat a
   internet costuma ser bloqueada: envie o arquivo do perímetro e, se quiser os

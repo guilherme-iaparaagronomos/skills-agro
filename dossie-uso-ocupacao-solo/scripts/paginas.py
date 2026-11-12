@@ -20,6 +20,7 @@ from matplotlib.patches import PathPatch, Rectangle  # noqa: E402
 from matplotlib.path import Path as Caminho  # noqa: E402
 
 A4 = (8.27, 11.69)
+plt.rcParams['figure.max_open_warning'] = 0  # o dossiê passa de 20 páginas; cada uma é fechada ao gravar
 ESQ, DIR, BASE = 0.075, 0.925, 0.085
 MARCA = 'OagronomIA'
 ASSINATURA = 'comunidade agrônomo10X'
@@ -682,6 +683,153 @@ def pagina_relevo(doc, rv):
         f.nota('Faixas de referência técnica usual, não regra: o limite real depende da máquina e da operação.')
     f.nota('O modelo de 30 m mostra a forma geral do relevo. Não vê terraço, curva de nível nem obra recente e '
            'não substitui levantamento topográfico.')
+    return f
+
+
+def _corta(texto, n):
+    texto = str(texto if texto not in (None, '') else '—')
+    return texto if len(texto) <= n else texto[:n - 1].rstrip() + '…'
+
+
+def paginas_restricoes(doc, rs):
+    """Unidades de conservação, terras indígenas e termos de embargo: o que sobrepõe o perímetro e o
+    que fica perto, por base pública. Devolve uma lista de folhas (a lista de itens pode pedir outra)."""
+    folhas = []
+
+    def nova(titulo):
+        f = Folha(doc)
+        f.secao(titulo)
+        folhas.append(f)
+        return f
+
+    def cabe(f, altura, titulo):
+        return f if f.sobra() >= altura else nova(titulo)
+
+    uc, ti, em = rs['uc'], rs['ti'], rs['embargo']
+    f = nova('Restrições: unidades de conservação, terras indígenas e embargos')
+    f.texto('O que o perímetro sobrepõe e o que fica perto dele em três bases públicas: unidades de conservação '
+            '(Cadastro Nacional de Unidades de Conservação, do Ministério do Meio Ambiente), terras indígenas (FUNAI) e '
+            'termos de embargo (IBAMA e ICMBio). Os termos de embargo aparecem pelo número, sem nome e sem documento de '
+            'pessoa; o número permite a consulta no órgão.')
+
+    def linha(nome, g):
+        if not g['lida']:
+            return [nome, 'base não lida', '—', '—', '—', '—']
+        return [nome, _corta(g['data'], 40), str(g['n']), br(g['ha']), br(g['pct']), str(g['n_perto'])]
+
+    f.tabela([('Base pública', ESQ, 'left'), ('Data da base', 0.37, 'left'), ('Itens', 0.74, 'right'), ('ha', 0.81, 'right'),
+              ('%', 0.86, 'right'), ('Perto', DIR, 'right')],
+             [linha('Unidades de conservação (CNUC, MMA)', uc), linha('Terras indígenas (FUNAI)', ti),
+              linha('Termos de embargo (IBAMA e ICMBio)', em)], tam=8.2)
+    f.nota('Itens = quantas unidades, terras ou termos tocam o perímetro; ha e % = a parte do perímetro coberta (o que '
+           'se sobrepõe dentro da mesma base é contado uma vez). Perto = até 10 km da divisa para unidade de conservação '
+           'e terra indígena e até 1 km para termo de embargo.'
+           + (f' Termos de embargo que tocam o perímetro: {em["n_contorno"]} com contorno e {em["n_ponto"]} marcado(s) '
+              'por ponto.' if em['lida'] and em['n'] else ''))
+
+    def lista(titulo, itens, nome_de, detalhe_de):
+        nonlocal f
+        if not itens:
+            return
+        f = cabe(f, 0.12, 'Restrições (continuação)')
+        f.secao(titulo)
+        for item in itens:
+            f = cabe(f, 0.075, 'Restrições (continuação)')
+            f.texto(_corta(nome_de(item), 95), tam=8.8, negrito=True)
+            f.texto(detalhe_de(item), tam=8.3, cor=T['fg2'], recuo=0.012)
+
+    lista('Unidades de conservação que sobrepõem o perímetro', uc['itens'], lambda u: u['nome'],
+          lambda u: ' · '.join(p for p in (
+              u['categoria'], u['grupo'], f'esfera {u["esfera"]}', f'criada em {u["criada_em"]}' if u['criada_em'] else '',
+              f'plano de manejo: {u["plano_manejo"]}', f'{br(u["ha"])} ha no perímetro ({br(u["pct"])} %)',
+              f'a unidade inteira tem {br(u["ha_total"], 0)} ha' if u['ha_total'] else '') if p))
+    lista('Terras indígenas que sobrepõem o perímetro', ti['itens'], lambda t: t['nome'],
+          lambda t: ' · '.join(p for p in (
+              f'etnia {t["etnia"]}' if t['etnia'] else '', f'fase na FUNAI: {t["fase"]}', t['modalidade'] or '',
+              f'{br(t["ha"])} ha no perímetro ({br(t["pct"])} %)',
+              f'a terra inteira tem {br(t["ha_total"], 0)} ha' if t['ha_total'] else '') if p))
+    lista('Termos de embargo que tocam o perímetro', em['itens'],
+          lambda e: f'{e["orgao"]} · termo {e["termo"]}' + (f' · {e["data"]}' if e['data'] else ''),
+          lambda e: ' · '.join(p for p in (
+              f'tipo na base: {e["tipo"]}',
+              f'contorno com {br(e["ha_na_area"])} ha no perímetro ({br(e["pct"])} %)' if e['origem'] == 'contorno'
+              else 'marcado por ponto (o órgão registrou a coordenada, não o contorno)',
+              f'área declarada no termo: {br(e["ha_no_termo"])} ha' if e['ha_no_termo'] else '', e['local'] or '') if p))
+
+    perto = ([['Unidade de conservação', f'{u["nome"]} ({u["categoria"]})', br(u['km'], 2)] for u in uc['perto']]
+             + [['Terra indígena', f'{t["nome"]} (fase: {t["fase"]})', br(t['km'], 2)] for t in ti['perto']]
+             + [['Termo de embargo', f'{e["orgao"]} {e["termo"]}' + (' (ponto)' if e['origem'] == 'ponto' else ''),
+                 br(e['distancia_km'], 2) if e['distancia_km'] is not None else '—'] for e in em['perto']])
+    if perto:
+        f = cabe(f, 0.07 + 0.0165 * len(perto), 'Restrições (continuação)')
+        f.secao('O que fica perto do perímetro')
+        f.tabela([('Tipo', ESQ, 'left'), ('Nome ou número', 0.28, 'left'), ('Distância (km)', DIR, 'right')],
+                 [[tipo, _corta(nome, 72), km] for tipo, nome, km in perto], tam=8.2)
+        listados = {'uc': (uc['n_perto'], len(uc['perto'])), 'ti': (ti['n_perto'], len(ti['perto'])),
+                    'em': (em['n_perto'], len(em['perto']))}
+        faltam = sum(max(0, total - mostrados) for total, mostrados in listados.values())
+        if faltam:
+            f.nota(f'Há mais {faltam} item(ns) perto do perímetro além dos listados.')
+
+    f = cabe(f, 0.13, 'Restrições (continuação)')
+    if em['lida'] and em['sem_localizacao']:
+        f.nota(f'A base do IBAMA traz {br(em["sem_localizacao"], 0)} termo(s) sem localização, que não entram neste '
+               'cruzamento.')
+    nao_lidas = ([nome for nome, g in (('unidades de conservação', uc), ('terras indígenas', ti), ('embargos', em))
+                  if not g['lida']] + ([f'embargos do {em["base_que_faltou"]}'] if em.get('base_que_faltou') else []))
+    if nao_lidas:
+        f.nota('Base(s) não lida(s) nesta consulta: ' + ', '.join(nao_lidas) + '. O documento não informa nada sobre '
+               'ela(s).')
+    f.nota('Esta seção é a leitura das bases públicas na data de cada uma; não equivale a certidão e não substitui a '
+           'consulta ao órgão.' + (f' Ficam de fora: {rs["nao_cobre"]}.' if rs.get('nao_cobre') else ''))
+    f.nota(f'Fonte: {rs["fonte"]} — bases públicas.')
+    return folhas
+
+
+def pagina_solo(doc, so):
+    f = Folha(doc)
+    f.secao('Solo: textura e carbono (estimativa)')
+    f.texto('Estimativas do SoilGrids 2.0, mapa mundial de solos do ISRIC feito por modelo, com pixel de 250 m. São '
+            'valores modelados, não medições no local. O ISRIC informa que o mapa não foi feito para a escala de '
+            'fazenda, e os valores tendem ao meio da faixa: solo muito arenoso ou muito argiloso costuma aparecer como '
+            'textura média.')
+    s, sub, est = so.get('superficie'), so.get('subsolo'), so.get('estoque')
+    f.pares([
+        ('Argila de 0–30 cm', f"{br(s['argila'])} %" if s else None),
+        ('Areia de 0–30 cm', f"{br(s['areia'])} %" if s else None),
+        ('Silte de 0–30 cm', f"{br(s['silte'])} %" if s else None),
+        ('Textura de 0–30 cm', f"{s['textura']} (grupamento textural da Embrapa)" if s else None),
+        ('Carbono de 0–30 cm', f"{br(s['carbono_g_kg'])} g/kg · {br(s['materia_organica'])} % de matéria orgânica "
+                               '(carbono × 1,724)' if s else None),
+        ('Argila de 30–100 cm', f"{br(sub['argila'])} % · textura {sub['textura']}" if sub else None),
+        ('Estoque de carbono, 0–30 cm', f"{br(est['t_ha'])} t/ha · {br(est['total_t'], 0)} t nos "
+                                        f"{br(est['area_com_dado_ha'])} ha com dado" if est else None),
+        ('Pixels de 250 m', str(so['pixels']) if so.get('pixels') is not None else None),
+    ], x_valor=0.36)
+    if so.get('camadas'):
+        f.secao('Por profundidade (média do perímetro)')
+        f.tabela([('Camada', ESQ, 'left'), ('Textura', 0.21, 'left'), ('Argila %', 0.50, 'right'), ('Areia %', 0.60, 'right'),
+                  ('Silte %', 0.70, 'right'), ('C g/kg', 0.81, 'right'), ('M.O. %', DIR, 'right')],
+                 [[c['camada'], c['textura'], br(c['argila']), br(c['areia']), br(c['silte']), br(c['carbono_g_kg']),
+                   br(c['materia_organica'])] for c in so['camadas']])
+        f.nota('C = carbono orgânico; M.O. = matéria orgânica (carbono × 1,724, conversão convencional).')
+    v = so.get('variacao')
+    if v:
+        f.nota(f'Dentro do perímetro, a argila de 0–30 cm vai de {br(v["argila"][0])} % a {br(v["argila"][1])} % e o '
+               f'estoque de carbono, de {br(v["estoque"][0])} a {br(v["estoque"][1])} t/ha (valores dos pixels de 250 m).')
+    fx = so.get('faixa_do_modelo')
+    if fx and (fx.get('argila') or fx.get('estoque')):
+        partes = ([f'argila de 0–30 cm entre {br(fx["argila"][0])} % e {br(fx["argila"][1])} %'] if fx.get('argila') else []) + \
+                 ([f'estoque entre {br(fx["estoque"][0])} e {br(fx["estoque"][1])} t/ha'] if fx.get('estoque') else [])
+        f.nota('Faixa de 90 % informada pelo próprio modelo, em cada pixel: ' + '; '.join(partes) + '.')
+    if so.get('poucos_pixels'):
+        f.nota('O perímetro tem menos de 4 pixels deste mapa: os valores são, na prática, os de um ou dois pixels de '
+               '250 m.')
+    if so.get('cobertura_pct') is not None:
+        f.nota(f'O mapa tem dado em {br(so["cobertura_pct"])} % do perímetro; água e área urbana ficam sem valor.')
+    f.nota('Esta seção traz estimativas de um mapa mundial de 250 m; não substitui análise de solo. O estoque de '
+           'carbono é a estimativa do mapa para 0–30 cm e não equivale a crédito de carbono.')
+    f.nota(f'Fonte: {so["fonte"]}, licença {so["licenca"]}; versão 2.0, pixel de 250 m.')
     return f
 
 
