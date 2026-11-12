@@ -1,60 +1,39 @@
 # Dossiê de uso e ocupação do solo
 
-Skill que monta, em PDF, o **dossiê de um imóvel rural só com fatos**: o que
-bases públicas e mapeamentos por satélite registram sobre a área, cada número
-com a fonte e o ano. Não avalia, não conclui e não recomenda.
+Skill que gera o **dossiê de um imóvel rural em PDF** pela ferramenta
+`dossie_pdf` do conector ClaudIA Sat e conduz a conversa em volta dela: o que
+perguntar, como chamar e como contar o resultado **só com fatos**, cada um com
+a fonte e a data.
 
-**O que ela reúne:**
+**O que o documento reúne:**
 
-- **CAR** (pelo número): situação do cadastro, condição da análise,
-  sobreposições informadas e as áreas declaradas de reserva legal, vegetação
-  nativa, área consolidada e APP, com o mapa delas.
+- **CAR** (pelo número): situação do cadastro, condição da análise e as áreas
+  declaradas de reserva legal, vegetação nativa, área consolidada e APP.
 - **Uso do solo de 1985 a hoje** e a situação frente às datas-marco de 2008,
-  2019 e 2020: o que é vegetação nativa, o uso que já existia e o que foi
-  aberto depois de cada data, com o ano da abertura.
-- **Cobertura do solo recente** (Dynamic World): as classes dos últimos 12
-  meses, com pixel de 10 m e a probabilidade de cada uma.
-- **PRODES e DETER** (INPE): polígonos de supressão por período, frente ao
-  mínimo da nota do MMA, e os alertas.
-- **Declarado no CAR × observado no mapeamento**: os dois números e a diferença.
-- **Relevo**: altitude, declive, classes da Embrapa e faixas de mecanização.
-- **Restrições**: unidades de conservação (CNUC, MMA), terras indígenas
-  (FUNAI) e termos de embargo (IBAMA e ICMBio) que o perímetro sobrepõe ou que
-  ficam perto, com a data de cada base. Os termos de embargo saem pelo número,
-  sem nome nem documento de pessoa.
-- **Solo** (SoilGrids, ISRIC): textura e carbono por profundidade e o estoque
-  de carbono de 0–30 cm. É estimativa de um mapa mundial de 250 m, não
-  medição, e sai com a faixa de incerteza do próprio modelo.
+  2019 e 2020.
+- **Cobertura do solo recente**: as classes dos últimos 12 meses, com pixel de
+  10 m.
+- **PRODES e DETER** (INPE): polígonos de supressão por período e os alertas.
+- **Declarado no CAR ao lado do observado**: os dois números e a diferença.
+- **Relevo** e **imagem de satélite**, inclusive a de 2 m quando existe.
+- **Restrições**: unidades de conservação, terras indígenas e termos de
+  embargo que o perímetro sobrepõe ou que ficam perto. Os termos saem pelo
+  número, sem nome nem documento de pessoa.
+- **Solo**: textura e carbono por profundidade, como estimativa de um mapa
+  mundial de 250 m.
 
-Parte do **número do CAR** (a skill busca o perímetro no SICAR), de um
-**arquivo de perímetro** ou de uma **fazenda salva** na conta.
+Entra pelo **número do CAR**, por um **arquivo de perímetro** ou por uma
+**fazenda salva** na conta.
 
 ## O que precisa
 
-- O conector **ClaudIA Sat** da comunidade agrônomo10X ligado na sua IA: é
-  dele que vêm o uso do solo, o PRODES, o relevo, as restrições, o solo e a
-  imagem. O mesmo conector tem a ferramenta `dossie_pdf`, que monta um
-  dossiê parecido direto no servidor; a skill serve para quem quer também as
-  tabelas, os números em JSON e as próprias figuras.
-- Para buscar o CAR pelo número e para os mapas entrarem sozinhos no PDF, um
-  ambiente de código com internet (Claude Code, Cowork). Na sandbox do chat a
-  internet costuma ser bloqueada: envie o arquivo do perímetro e, se quiser os
-  mapas no dossiê, baixe-os pelos links e envie no chat.
+O conector **ClaudIA Sat** da comunidade agrônomo10X ligado na sua IA. A skill
+não tem script: quem monta o PDF é a ferramenta do conector, em uma chamada.
 
 ## Estrutura
 
-- [`SKILL.md`](SKILL.md) — o playbook que a IA segue.
-- `scripts/` — `car.py` (perímetro e declarações do CAR, só biblioteca
-  padrão) · `leitura.py` (lê os números do texto das ferramentas e confere as
-  somas) · `paginas.py` (as páginas do PDF, no design system da casa) ·
-  `imagem_rgb.py` (lê o GeoTIFF da imagem de satélite e faz a figura) ·
-  `montar_dossie.py` (pipeline CLI; baixa os mapas pelos links quando o
-  ambiente tem internet) · `geometria.py` e `shapefile_min.py` (perímetro em
-  KML, GeoJSON, shapefile ou WKT). Todos com testes embutidos; `python
-  scripts/montar_dossie.py --demo` monta um dossiê de exemplo com dados
-  inventados. Dependências: numpy e matplotlib.
+- [`SKILL.md`](SKILL.md) — o roteiro que a IA segue e as regras de "só fatos".
 - `references/fontes.md` — o que é cada fonte, as datas-marco e os limites.
-- `references/dados.md` — o que o script lê e o que ele confere.
 
 ## Instalar
 
@@ -63,8 +42,7 @@ e envie em **claude.ai → Configurações → Capacidades → Skills**.
 
 ## Avisos
 
-O dossiê não é laudo, parecer nem análise de conformidade ambiental,
-fundiária ou de crédito. Mapeamento por satélite tem erro de classificação, o
-CAR é autodeclaratório e fontes públicas mudam: uma nova consulta pode trazer
-números diferentes. A interpretação é do responsável técnico. Divergências ou
-melhorias? Abra uma [issue](../../../issues/new/choose).
+O dossiê reúne fatos de bases públicas e de satélite. Não é laudo, parecer nem
+recomendação, não equivale a certidão e não substitui vistoria. A interpretação
+é do responsável técnico. Divergências ou melhorias? Abra uma
+[issue](../../../issues/new/choose).

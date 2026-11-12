@@ -1,42 +1,37 @@
 ---
 name: dossie-uso-ocupacao-solo
 description: >-
-  Monta o dossiê de uso e ocupação do solo de um imóvel rural em PDF, só com
-  fatos e a fonte de cada um. Reúne o uso do solo de 1985 a hoje e a situação
-  frente às datas-marco de 2008, 2019 e 2020 (MapBiomas), a cobertura do solo
-  dos últimos 12 meses (Dynamic World), a supressão mapeada pelo INPE (PRODES
-  e DETER), o relevo, as unidades de conservação, terras indígenas e termos de
-  embargo que o perímetro sobrepõe, a textura e o carbono do solo estimados
-  (SoilGrids) e, quando há o número do CAR, o que o cadastro declara
-  (situação, reserva legal, vegetação nativa, área consolidada, APP) ao lado
-  do que os mapas mostram. Parte do número do CAR
-  (busca o perímetro no SICAR), de um arquivo de perímetro ou de uma fazenda
-  salva. Usa o conector ClaudIA Sat. Não avalia nem recomenda. Acione com
-  "dossiê do imóvel", "uso e ocupação do solo", "histórico de uso da fazenda",
-  "o que tinha aqui em 2008", "levantamento do CAR" ou quando o usuário trouxer
-  um CAR ou um perímetro pedindo o histórico da área.
+  Gera o dossiê de uso e ocupação do solo de um imóvel rural em PDF pela
+  ferramenta dossie_pdf da ClaudIA Sat e conduz a conversa: o que pedir, como
+  chamar e como relatar só os fatos, com a fonte de cada um. O documento reúne
+  o que o CAR declara, o uso do solo de 1985 a hoje e a situação frente às
+  datas-marco de 2008, 2019 e 2020, a cobertura dos últimos 12 meses, PRODES e
+  DETER, o declarado no CAR ao lado do observado, o relevo, a imagem de
+  satélite, as unidades de conservação, terras indígenas e termos de embargo, e
+  a estimativa de textura e carbono do solo. Entra pelo número do CAR, por um
+  perímetro ou por uma fazenda salva. Não avalia nem recomenda. Acione com
+  "dossiê do imóvel", "dossiê do CAR", "uso e ocupação do solo", "histórico de
+  uso da fazenda", "o que tinha aqui em 2008", "levantamento do imóvel" ou
+  quando o usuário trouxer um CAR ou um perímetro pedindo o retrato da área.
 ---
 
 # Dossiê de uso e ocupação do solo
 
-Junta num PDF o que bases públicas e mapeamentos por satélite registram sobre
-um imóvel: uso do solo ano a ano, datas-marco, PRODES e DETER, relevo,
-unidades de conservação, terras indígenas, termos de embargo, a estimativa de
-textura e carbono do solo e as declarações do CAR. Cada número sai com a fonte
-e a data.
+Quem monta o documento é a ferramenta **`dossie_pdf`** do conector ClaudIA
+Sat: uma chamada, um PDF. Esta skill é o roteiro da conversa em volta dela: o
+que perguntar antes, como chamar, como contar o resultado e o que nunca dizer.
 
 ## A regra que vale para tudo: só fatos
 
 O dossiê **mostra o dado e para aí**. Você também:
 
 - NUNCA diga que o imóvel está regular, irregular, apto, inapto, embargado,
-  conforme, nem que passa ou não no crédito.
+  conforme, nem que passa ou não no crédito, na compra ou no licenciamento.
 - NUNCA recomende conduta (regularizar, recompor, averbar, contratar).
 - Ao comentar um número, cite a fonte junto: "pelo mapeamento do MapBiomas",
   "pelos dados públicos do INPE", "declarado no CAR".
-- Diferença entre o declarado e o observado é uma subtração, não um achado.
-- Se o usuário pedir a conclusão, entregue os dados e devolva a decisão ao
-  responsável técnico, que conhece a área.
+- Diferença entre o declarado no CAR e o observado é uma subtração, não um
+  achado. Não interprete.
 - **Restrições**: diga "pelas bases públicas, na data de cada uma". Não é
   certidão. Estar dentro de uma unidade de uso sustentável (uma APA, por
   exemplo) não quer dizer que a atividade seja proibida: as regras são de cada
@@ -47,158 +42,103 @@ O dossiê **mostra o dado e para aí**. Você também:
   medição. Diga isso junto do primeiro número. Não recomende calagem,
   adubação, cultura nem manejo a partir dele, e não trate o estoque de carbono
   como crédito de carbono. Se o usuário tem análise de solo, a análise vale.
+- Se o usuário pedir a conclusão, entregue os dados e devolva a decisão ao
+  responsável técnico, que conhece a área.
 
 ## O que precisa estar disponível
 
-- **Conector ClaudIA Sat** (comunidade agrônomo10X) ligado na IA: é ele que
-  devolve uso do solo, PRODES, relevo, restrições, solo e imagem. Sem ele não há dossiê: avise o
-  usuário e pare.
-- **Perímetro**, por um destes três caminhos:
-  1. **Número do CAR** → `scripts/car.py` busca o polígono e as declarações no
-     SICAR. Precisa de internet. Na sandbox de código do chat o site do CAR é
-     bloqueado: o script avisa; aí peça o arquivo do perímetro ao usuário (ele
-     baixa no site do CAR ou com a skill `consulta-car` onde há internet).
-  2. **Arquivo** do usuário: `.kml`, `.geojson`, `.shp` (com `.dbf`/`.prj`) ou WKT.
-  3. **Fazenda salva** na conta dele (`listar_fazendas`): as ferramentas
-     aceitam o nome; para o desenho do contorno o script ainda precisa do
-     arquivo — peça-o, ou monte o dossiê sem o bloco do CAR.
+- **Conector ClaudIA Sat** (comunidade agrônomo10X) ligado na IA, com a
+  ferramenta `dossie_pdf`. Sem o conector, avise o usuário e pare.
+- **O imóvel**, por um destes caminhos:
+  1. **Número do CAR** (UF-1234567-32 caracteres, com ou sem pontos): a
+     ferramenta busca o perímetro na consulta pública do SICAR.
+  2. **Arquivo de perímetro** do usuário: GeoJSON, KML ou WKT. Shapefile:
+     converta para GeoJSON antes de enviar.
+  3. **Fazenda salva** na conta dele: `listar_fazendas` mostra os nomes.
+  4. **Perímetro junto com o CAR**: o documento usa o perímetro enviado e traz
+     o que o cadastro declara.
+- Só imóveis no Brasil.
 
 ## Fluxo de trabalho (siga nesta ordem)
 
-1. **Pergunte o que falta**: nome do imóvel para a capa; CAR, arquivo ou
-   fazenda salva; solicitante e responsável técnico, se quiser que constem.
-2. **Perímetro e CAR** (quando houver o número):
-   `python scripts/car.py <CAR> --saida ./dossie`
-   Grava `car.json`, `perimetro.geojson` e `car-temas.geojson`. CAR não
-   encontrado ou serviço fora do ar: diga ao usuário e siga com o arquivo dele.
-3. **Chame as ferramentas da ClaudIA Sat** com o MESMO perímetro (envie o
-   GeoJSON na primeira e reutilize o `geometria_id` nas seguintes):
-   - `uso_do_solo` — obrigatória;
-   - `cobertura_do_solo` — o retrato dos últimos 12 meses, com pixel de 10 m
-     (demora cerca de um minuto);
-   - `prodes_fazenda`;
-   - `relevo_fazenda`;
-   - `restricoes_fazenda` — unidades de conservação, terras indígenas e
-     termos de embargo que o perímetro sobrepõe ou que ficam perto;
-   - `solo_textura_carbono` — textura e carbono estimados pelo SoilGrids;
-   - `imagem_satelite` (produto `rgb`) — só para registrar a data da cena mais
-     recente sem nuvem.
-   As seis primeiras consomem hectares da franquia do usuário: avise antes.
-   Se alguma não existir no conector do usuário, monte sem ela e diga qual
-   seção ficou de fora.
-4. **Grave o texto de cada ferramenta num arquivo, COMO VEIO**: `uso.txt`,
-   `cobertura.txt`, `prodes.txt`, `relevo.txt`, `restricoes.txt`, `solo.txt`,
-   `imagem.txt`. Copie o texto inteiro, sem
-   resumir, reordenar, traduzir nem arredondar, **com a lista de arquivos e os
-   links**. O script lê os números desse texto e confere as somas (um número
-   trocado na cópia aparece como aviso) e usa os links para buscar os mapas.
-   Os links valem 1 hora: monte o dossiê logo depois das consultas.
-5. **Monte**:
-   `python scripts/montar_dossie.py --perimetro ./dossie/perimetro.geojson
-   --nome "Fazenda Exemplo" --uso uso.txt --cobertura cobertura.txt --prodes
-   prodes.txt --relevo relevo.txt --restricoes restricoes.txt --solo solo.txt
-   --imagem imagem.txt --car ./dossie/car.json --car-temas
-   ./dossie/car-temas.geojson --saida ./dossie --png`
-   Sem CAR, tire `--car` e `--car-temas` e informe `--municipio "Cidade/UF"`.
-6. **Leia a saída do script.** "conferências de soma: tudo fechou" = pode
-   entregar. Qualquer aviso de soma ou de "não li": compare o arquivo com o
-   texto da ferramenta, corrija a cópia e rode de novo. Não entregue dossiê
-   com aviso de conferência sem dizer ao usuário qual é. A linha "figuras:"
-   diz se os mapas entraram (passo 8).
-7. **Entregue** o `dossie.pdf` (mostre no chat as páginas em PNG), o
-   `dossie_tabelas.csv` e lembre que os arquivos das ferramentas (mapas,
-   GeoPackage, GeoTIFF, curvas de nível) têm link de 1 hora: o usuário precisa
-   baixar na hora.
-8. **Figuras**: o script baixa sozinho, pelos links dos textos, os mapas das
-   ferramentas e a imagem de satélite (que vem em GeoTIFF e ele converte em
-   figura), e põe cada um numa página. Não peça nada ao usuário antes de
-   tentar.
-   - Saiu "figuras: N arquivo(s) baixado(s)": está pronto.
-   - Saiu "não consegui baixar": o ambiente de código não tem internet (é o
-     padrão na sandbox do chat) ou os links venceram. Entregue o dossiê como
-     saiu e ofereça o complemento: o usuário baixa os arquivos pelos links,
-     envia no chat, você os põe numa pasta e roda de novo com
-     `--figuras ./figuras`. O script reconhece pelo nome: `rgb_AAAA-MM-DD.tif`,
-     `uso_solo_situacao`, `uso_solo_mapas`, `uso_solo_historico`,
-     `cobertura_classes`, `cobertura_confianca`, `prodes_deter`,
-     `relevo_altitude`, `relevo_declividade`, `restricoes`,
-     `solo_textura_carbono`.
-   - Outra imagem entra com `--figura "Legenda=arquivo.png"`. É assim que
-     entra a imagem de 2 m da `imagem_cbers`, se o usuário quiser:
-     `--figura "Imagem de 2 m (CBERS-4A, INPE), cena de DD/MM/AAAA=arquivo.png"`.
+1. **Pergunte o que falta**: CAR, arquivo ou fazenda salva; o nome da
+   propriedade para o título; e, se ele quiser que constem, quem pediu o
+   dossiê e o responsável técnico.
+2. **Avise antes de chamar**: a ferramenta consome hectares da franquia do
+   usuário (a área do imóvel) e leva de 20 segundos a pouco mais de 1 minuto.
+3. **Chame `dossie_pdf`** com o que ele deu:
+   - `car` — o número do CAR;
+   - `geometria` (o perímetro), `geometria_id` (de uma consulta anterior sobre
+     a mesma área) ou `fazenda` (o nome da fazenda salva);
+   - `nome_propriedade`, `solicitante`, `responsavel`.
+   Com o CAR sozinho, não envie perímetro. Não chame as outras ferramentas
+   para "montar por partes": o dossiê já reúne todas.
+4. **Entregue o PDF**: passe o link do arquivo e diga que ele **expira em 1
+   hora**, então é para baixar na hora.
+5. **Conte o que o documento traz**, a partir do texto que a ferramenta
+   devolveu: os fatos, cada um com a fonte e a data, nas palavras dela. Não
+   acrescente número, não some, não arredonde de outro jeito e não qualifique
+   (nada de "apenas", "preocupante", "tranquilo").
+6. **Repita os avisos da ferramenta com as palavras dela**:
+   - "NÃO SAIU DESTA VEZ": uma seção falhou; o PDF marca a seção e as outras
+     não dependem dela. Diga qual e ofereça gerar de novo depois.
+   - "NÃO INCLUÍDO NESTA EMISSÃO" e "OBSERVAÇÃO QUE ESTÁ NO DOCUMENTO": leia
+     para o usuário.
+   - Base de restrição não lida: o documento não informa nada sobre ela. Não
+     diga "nenhuma".
+7. **Se a ferramenta recusar** (CAR não encontrado, consulta do CAR fora do
+   ar, área fora do Brasil, franquia insuficiente, perímetro inválido): diga o
+   motivo como ela disse. CAR que não resolve: peça o arquivo do perímetro.
+8. **Depois do dossiê**, se o usuário quiser o detalhe ou os arquivos de um
+   tema para o QGIS, use a ferramenta daquele dado: `uso_do_solo`,
+   `cobertura_do_solo`, `prodes_fazenda`, `relevo_fazenda`,
+   `restricoes_fazenda`, `solo_textura_carbono`, `imagem_satelite`,
+   `imagem_cbers`. O dossiê entrega o PDF; os mapas, o GeoPackage e os
+   GeoTIFFs vêm dessas ferramentas.
 
-## O dossiê pronto pelo conector (`dossie_pdf`)
+## O que o PDF traz
 
-A ClaudIA Sat também tem a ferramenta `dossie_pdf`, que monta no servidor um
-dossiê com estas mesmas seções a partir do número do CAR, de um perímetro ou
-de uma fazenda salva, em menos de um minuto, já com os mapas. Se ela aparecer
-no conector do usuário, **conte que existem os dois caminhos e deixe ele
-escolher**:
-
-- `dossie_pdf`: mais rápido, uma chamada só, não depende de internet no
-  ambiente de código.
-- esta skill: entrega também as tabelas em CSV e os números em JSON, aceita
-  figuras do usuário, tem o tema escuro e funciona quando só algumas
-  ferramentas estão disponíveis.
-
-As regras de "só fatos" valem igual para os dois. Não cole página de um no
-outro.
-
-## O que sai no PDF
-
-| Página | Conteúdo | Fonte |
+| Seção | Conteúdo | Fonte |
 |---|---|---|
-| Identificação | nome, município, CAR, área, contorno do perímetro, como ler | perímetro e CAR |
-| CAR | situação do cadastro, condição da análise, datas, sobreposições informadas, áreas declaradas e o mapa delas | SICAR |
-| Uso do solo | classes do último mapa e tabela das datas-marco | MapBiomas |
-| Datas-marco | situação de cada área, área aberta depois de 2008, 2019 e 2020, ano da abertura | MapBiomas |
-| Cobertura recente | classes dos últimos 12 meses (10 m), probabilidade de cada uma e a 2ª mais provável | Dynamic World |
-| PRODES e DETER | polígonos por período, frente ao mínimo da nota do MMA, alertas | INPE |
-| Declarado × observado | área, vegetação nativa e uso anterior a 2008: os dois números e a diferença | SICAR e MapBiomas |
-| Relevo | altitude, declive, classes da Embrapa, faixas de mecanização | modelo de terreno de 30 m |
-| Restrições | o que o perímetro sobrepõe e o que fica perto, com a data de cada base; termos de embargo pelo número | CNUC (MMA), FUNAI, IBAMA e ICMBio |
-| Solo | argila, areia, silte, textura e carbono por profundidade, estoque de carbono de 0–30 cm e a faixa do próprio modelo | SoilGrids 2.0 (ISRIC) |
-| Figuras | a imagem de satélite e os mapas das ferramentas, uma por página | a da figura |
-| Fontes e limites | cada fonte, datas, limites e as observações da montagem | — |
+| Identificação | nome, município, área, contorno do perímetro e de onde ele veio | perímetro e CAR |
+| CAR | situação do cadastro, condição da análise, datas e as áreas declaradas (reserva legal, vegetação nativa, área consolidada, APP) | consulta pública do SICAR |
+| Uso do solo | classes do último mapa e a série desde 1985 | MapBiomas |
+| Datas-marco | o que havia em 2008, 2019 e 2020 e o que foi aberto depois de cada data | MapBiomas |
+| Cobertura recente | classes dos últimos 12 meses, com pixel de 10 m | Dynamic World |
+| PRODES e DETER | polígonos de supressão por período e alertas | INPE |
+| Declarado e observado | o número do CAR, o número do mapeamento e a diferença | SICAR e MapBiomas |
+| Relevo | altitude, desnível, declive, classes de relevo e faixas de mecanização | modelo de terreno de 30 m |
+| Imagem | a cena mais recente em cor real e, quando existe, a imagem de 2 m | Sentinel-2 e CBERS-4A (INPE) |
+| Restrições | unidades de conservação, terras indígenas e termos de embargo que o perímetro sobrepõe ou que ficam perto, com a data de cada base | CNUC (MMA), FUNAI, IBAMA e ICMBio |
+| Solo | textura e carbono por profundidade e o estoque de carbono de 0–30 cm, como estimativa | SoilGrids 2.0 (ISRIC) |
+| Fontes e limites | cada fonte, com a data, e os limites do documento | — |
 
-Bloco sem dado não aparece: sem CAR não há as páginas do CAR nem a comparação;
-sem o texto de uma ferramenta, a seção dela não sai. Base de restrição que a
-ferramenta não conseguiu ler sai como "base não lida", nunca como "nenhuma".
+Seção sem dado não aparece: sem o número do CAR não há o bloco do cadastro nem
+a comparação. O documento pode ganhar seções com o tempo: descreva o que a
+ferramenta devolveu nesta chamada, não esta tabela.
+
+## O que a skill não faz
+
+- Não monta PDF por conta própria, não edita o PDF da ferramenta e não
+  acrescenta logo, capa nem texto.
+- Não gera o dossiê de novo para "melhorar" um resultado: o documento é o que
+  as fontes registram para aquele perímetro, naquela data. Outro perímetro ou
+  outra data, outro dossiê.
+- Não cobre o que as bases não cobrem: territórios quilombolas,
+  assentamentos, florestas públicas, embargos de órgãos estaduais e a zona de
+  amortecimento das unidades de conservação. Se o usuário pedir, diga que o
+  dossiê não traz; não busque por conta própria.
+- Não substitui certidão, vistoria, análise de solo nem a análise do banco ou
+  do órgão ambiental.
 
 ## Sigilo das fontes
 
-Cite as fontes exatamente como as ferramentas mandam (MapBiomas Coleção N;
+Cite as fontes exatamente como a ferramenta manda (MapBiomas Coleção N;
 Dynamic World; PRODES e DETER do INPE; ANADEM/Copernicus DEM; CNUC (MMA),
-FUNAI, IBAMA e ICMBio; SoilGrids 2.0 (ISRIC), licença CC BY 4.0; Sentinel-2).
-Sobre como o dado
-é processado, a única frase é: processado pelas ferramentas da comunidade
-agrônomo10X (OagronomIA). Não deduza nem cite plataforma, biblioteca ou nuvem.
+FUNAI, IBAMA e ICMBio; SoilGrids 2.0 (ISRIC), licença CC BY 4.0; Sentinel-2;
+CBERS-4A, INPE). Sobre como o dado é processado, a única frase é: processado
+pelas ferramentas da comunidade agrônomo10X (OagronomIA). Não deduza nem cite
+plataforma, biblioteca ou nuvem.
 
-## Detalhes fixos
-
-- O script **não interpreta**: organiza, desenha e confere somas (classes ×
-  área, faixas "aberto" × total, áreas iguais entre as ferramentas, CAR × perímetro).
-- As áreas do CAR são as que o SICAR informa por polígono; sem o campo, a área
-  é calculada do polígono e a página diz isso.
-- Temas do CAR se sobrepõem (reserva legal sobre vegetação nativa, APP sobre
-  as duas). A tabela avisa para não somar.
-- A imagem de satélite vem em GeoTIFF de 16 bits; `imagem_rgb.py` a lê e
-  estica para virar figura. O dossiê também registra a data da cena.
-- **Aparência**: o PDF segue o design system da casa, no tema claro de
-  impressão (`--tema escuro` troca para o tema escuro da marca). As fontes do
-  design system (Chakra Petch, Manrope, JetBrains Mono) só entram se estiverem
-  instaladas ou numa pasta passada em `--fontes`; sem elas, o script usa as
-  fontes padrão. Não altere cores nem acrescente logo por conta própria.
-- `python scripts/montar_dossie.py --demo` monta um dossiê de exemplo com
-  dados inventados, sem rede. `python scripts/<nome>.py` roda os testes de
-  cada módulo (`car.py --teste`).
-- A `monitorar_cobertura` (mudança da cobertura no tempo) não entra no dossiê:
-  é acompanhamento, não retrato. Ofereça à parte se o usuário pedir.
-- As restrições não cobrem territórios quilombolas, assentamentos, florestas
-  públicas, embargos de órgãos estaduais nem a zona de amortecimento das
-  unidades; a página diz isso. Se o usuário pedir, diga que o dossiê não
-  cobre; não busque por conta própria.
-- A página de restrições lista até 12 unidades, 12 terras e 15 termos (é o
-  que o texto da ferramenta traz); o GeoPackage da ferramenta tem todos.
-- Formato dos textos lidos e o que cada conferência faz: `references/dados.md`.
-- Fontes, datas-marco e limites: `references/fontes.md`.
+O que é cada fonte, as datas-marco e os limites de cada uma:
+`references/fontes.md`.

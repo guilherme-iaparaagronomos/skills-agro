@@ -9,8 +9,8 @@ página diz o que é cada fonte e até onde ela vai.
   rurais. O proprietário ou possuidor desenha o imóvel e as áreas (reserva
   legal, APP, remanescente de vegetação nativa, área consolidada).
 - **De onde vem**: consulta pública do SICAR (`consulta.car.gov.br`), a mesma
-  que a skill `consulta-car` usa: a API de detalhes do imóvel e o serviço WFS
-  das camadas, filtrado pelo código do imóvel. Sem captcha, sem login.
+  que a skill `consulta-car` usa. A ferramenta do dossiê faz a consulta pelo
+  número do CAR.
 - **O que o dossiê mostra**: situação do cadastro (ativo, pendente, suspenso
   ou cancelado), condição da análise, datas de inscrição e de retificação,
   módulos fiscais, sobreposições informadas e a área de cada tema declarado.
@@ -108,11 +108,16 @@ página diz o que é cada fonte e até onde ela vai.
   substitui análise de solo. O estoque de carbono não equivale a crédito de
   carbono. A matéria orgânica é o carbono × 1,724 (conversão convencional).
 
-## Imagem de satélite (Sentinel-2)
+## Imagem de satélite (Sentinel-2 e CBERS-4A)
 
-O dossiê registra a data da cena mais recente sem nuvem e o percentual do
-perímetro livre de nuvem. A imagem em si vai ao usuário como GeoTIFF, para o
-QGIS.
+- **Cor real, 10 m (Sentinel-2)**: o dossiê traz a cena mais recente sem
+  nuvem, com a data e o percentual do perímetro livre de nuvem.
+- **Alta resolução, 2 m (CBERS-4A, câmera WPM, INPE)**: a cena mais recente
+  dos últimos 36 meses que cobre o perímetro inteiro com pouca nuvem. O
+  satélite repete a área a cada 31 dias e muita passagem tem nuvem; quando
+  nenhuma serve, o documento diz isso e lista as datas que existem.
+- O GeoTIFF de cada imagem, para o QGIS, vem das ferramentas `imagem_satelite`
+  e `imagem_cbers`, não do dossiê.
 
 ## As datas-marco
 
