@@ -66,9 +66,10 @@ O dossiê **mostra o dado e para aí**. Você também:
    As três primeiras consomem hectares da franquia do usuário: avise antes.
 4. **Grave o texto de cada ferramenta num arquivo, COMO VEIO**: `uso.txt`,
    `prodes.txt`, `relevo.txt`, `imagem.txt`. Copie o texto inteiro, sem
-   resumir, reordenar, traduzir nem arredondar. O script lê os números desse
-   texto e confere as somas; um número trocado na cópia aparece como aviso.
-   Os links podem ficar ou sair, tanto faz.
+   resumir, reordenar, traduzir nem arredondar, **com a lista de arquivos e os
+   links**. O script lê os números desse texto e confere as somas (um número
+   trocado na cópia aparece como aviso) e usa os links para buscar os mapas.
+   Os links valem 1 hora: monte o dossiê logo depois das consultas.
 5. **Monte**:
    `python scripts/montar_dossie.py --perimetro ./dossie/perimetro.geojson
    --nome "Fazenda Exemplo" --uso uso.txt --prodes prodes.txt --relevo
@@ -78,17 +79,25 @@ O dossiê **mostra o dado e para aí**. Você também:
 6. **Leia a saída do script.** "conferências de soma: tudo fechou" = pode
    entregar. Qualquer aviso de soma ou de "não li": compare o arquivo com o
    texto da ferramenta, corrija a cópia e rode de novo. Não entregue dossiê
-   com aviso de conferência sem dizer ao usuário qual é.
+   com aviso de conferência sem dizer ao usuário qual é. A linha "figuras:"
+   diz se os mapas entraram (passo 8).
 7. **Entregue** o `dossie.pdf` (mostre no chat as páginas em PNG), o
    `dossie_tabelas.csv` e lembre que os arquivos das ferramentas (mapas,
    GeoPackage, GeoTIFF, curvas de nível) têm link de 1 hora: o usuário precisa
    baixar na hora.
-8. **Figuras** (opcional): os mapas que as ferramentas geram entram no dossiê
-   se o usuário baixar os PNG e enviar no chat. Ponha-os numa pasta e rode de
-   novo com `--figuras ./figuras`. O script reconhece pelo nome:
-   `uso_solo_situacao`, `uso_solo_mapas`, `uso_solo_historico`, `prodes_deter`,
-   `relevo_altitude`, `relevo_declividade`. Outra imagem entra com
-   `--figura "Legenda=arquivo.png"`.
+8. **Figuras**: o script baixa sozinho, pelos links dos textos, os mapas das
+   ferramentas e a imagem de satélite (que vem em GeoTIFF e ele converte em
+   figura), e põe cada um numa página. Não peça nada ao usuário antes de
+   tentar.
+   - Saiu "figuras: N arquivo(s) baixado(s)": está pronto.
+   - Saiu "não consegui baixar": o ambiente de código não tem internet (é o
+     padrão na sandbox do chat) ou os links venceram. Entregue o dossiê como
+     saiu e ofereça o complemento: o usuário baixa os arquivos pelos links,
+     envia no chat, você os põe numa pasta e roda de novo com
+     `--figuras ./figuras`. O script reconhece pelo nome: `rgb_AAAA-MM-DD.tif`,
+     `uso_solo_situacao`, `uso_solo_mapas`, `uso_solo_historico`,
+     `prodes_deter`, `relevo_altitude`, `relevo_declividade`.
+   - Outra imagem entra com `--figura "Legenda=arquivo.png"`.
 
 ## O que sai no PDF
 
@@ -101,7 +110,7 @@ O dossiê **mostra o dado e para aí**. Você também:
 | PRODES e DETER | polígonos por período, frente ao mínimo da nota do MMA, alertas | INPE |
 | Declarado × observado | área, vegetação nativa e uso anterior a 2008: os dois números e a diferença | SICAR e MapBiomas |
 | Relevo | altitude, declive, classes da Embrapa, faixas de mecanização | modelo de terreno de 30 m |
-| Figuras | os mapas enviados | a da figura |
+| Figuras | a imagem de satélite e os mapas das ferramentas, uma por página | a da figura |
 | Fontes e limites | cada fonte, datas, limites e as observações da montagem | — |
 
 Bloco sem dado não aparece: sem CAR não há as páginas do CAR nem a comparação.
@@ -121,8 +130,13 @@ agrônomo10X (OagronomIA). Não deduza nem cite plataforma, biblioteca ou nuvem.
   é calculada do polígono e a página diz isso.
 - Temas do CAR se sobrepõem (reserva legal sobre vegetação nativa, APP sobre
   as duas). A tabela avisa para não somar.
-- A imagem de satélite vem em GeoTIFF para o QGIS e não entra como figura; o
-  dossiê registra a data da cena.
+- A imagem de satélite vem em GeoTIFF de 16 bits; `imagem_rgb.py` a lê e
+  estica para virar figura. O dossiê também registra a data da cena.
+- **Aparência**: o PDF segue o design system da casa, no tema claro de
+  impressão (`--tema escuro` troca para o tema escuro da marca). As fontes do
+  design system (Chakra Petch, Manrope, JetBrains Mono) só entram se estiverem
+  instaladas ou numa pasta passada em `--fontes`; sem elas, o script usa as
+  fontes padrão. Não altere cores nem acrescente logo por conta própria.
 - `python scripts/montar_dossie.py --demo` monta um dossiê de exemplo com
   dados inventados, sem rede. `python scripts/<nome>.py` roda os testes de
   cada módulo (`car.py --teste`).

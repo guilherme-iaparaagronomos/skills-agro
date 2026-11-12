@@ -55,6 +55,16 @@ Conferência: as classes somam 100% (tolerância de 1,5).
 `Cena Sentinel-2 de 2026-10-27, com 99.7% da área livre de nuvem (fonte: …).`
 → data da cena, percentual e fonte.
 
+## Arquivos das ferramentas (figuras)
+
+No fim de cada texto vem a lista `- nome.ext (NN KB): https://…`. O script
+baixa só estes: `uso_solo_situacao.png`, `uso_solo_mapas.png`,
+`uso_solo_historico.png`, `prodes_deter.png`, `relevo_altitude.png`,
+`relevo_declividade.png` e `rgb_AAAA-MM-DD.tif`. Regras: só `https`, até 12 MB
+por arquivo, e o conteúdo precisa ser mesmo PNG ou TIFF. GeoPackage, curvas de
+nível e os GeoTIFFs de relevo não são baixados: são para o QGIS. Falha de rede
+não derruba o dossiê; a saída diz o que faltou.
+
 ## Entre as ferramentas
 
 - as áreas informadas por uso do solo, PRODES e relevo diferem menos de 1%

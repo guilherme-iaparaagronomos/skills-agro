@@ -12,8 +12,8 @@ Uso típico (sempre em duas etapas — conferir primeiro, interpolar depois):
   2) python interpolar.py --perimetro talhao.kml --pontos amostras.shp \
        --laudo laudo.csv --tabela mg --elementos "K (mg/dm3),V (%)" \
        --fazenda "Fazenda Exemplo" --saida ./saida
-     → por elemento: escolhe a potência do IDW por validação cruzada,
-       interpola (pixel 5 m), classifica e grava <elemento>.tif (valores),
+     → por elemento: interpola por IDW (potência 2, pixel 5 m), mede o erro
+       por validação cruzada, classifica e grava <elemento>.tif (valores),
        <elemento>.pdf e <elemento>.png (mapa em classes com ha e %).
        No fim: apostila.pdf (capa, resumo e um mapa por página),
        resumo_classes.csv e relatorio.json.
@@ -318,6 +318,11 @@ def superficie(ctx, coluna, args, grade, cache):
     malha = idw.interpolar_grade(x, y, z, potencia, xc, yc, mascara, args.vizinhos, args.raio)
 
     avisos = []
+    melhor = escolha['potencias'][f'{escolha["vencedora"]:g}']['rmse_loo']
+    if not automatica and escolha['rmse_loo'] > 1.05 * melhor:
+        avisos.append(f'na validação cruzada a potência {escolha["vencedora"]:g} erra '
+                      f'{1 - melhor / escolha["rmse_loo"]:.0%} menos que a {potencia:g} usada; '
+                      'para adotá-la, --potencia auto')
     if automatica and potencia >= max(idw.POTENCIAS):
         avisos.append(f'a potência {potencia:g} venceu no teto testado: o mapa fica perto do '
                       '"vizinho mais próximo", com manchas em volta de cada amostra. Para um '
@@ -390,8 +395,8 @@ def processar_elemento(ctx, coluna, spec, args, grade, cache, aux, saida, data):
         arquivos.append(f'{nome}-classes.tif')
 
     e = s['idw']
-    origem = 'validação cruzada' if e['automatica'] else 'informada'
-    metodo = [f'IDW · potência {classes.num_br(e["potencia_usada"])} ({origem}) · '
+    origem = ' (validação cruzada)' if e['automatica'] else ''
+    metodo = [f'IDW · potência {classes.num_br(e["potencia_usada"])}{origem} · '
               f'{args.vizinhos} vizinhos · pixel {classes.num_br(args.pixel)} m',
               f'RMSE da validação cruzada: {classes.num_br(e["rmse_loo"])} · ganho sobre '
               f'a média: {e["ganho_sobre_a_media"]:.0%}'.replace('.', ',')]
@@ -493,8 +498,8 @@ def principal(argv=None):
     p.add_argument('--par', action='append', metavar='PONTO=LAUDO',
                    help='casamento manual confirmado pelo usuário (repetível)')
     # IDW
-    p.add_argument('--potencia', default='auto',
-                   help='auto (escolhe por validação cruzada) ou um número (ex.: 2)')
+    p.add_argument('--potencia', default='2',
+                   help='2 (padrão, o usual) · outro número · auto (escolhe por validação cruzada)')
     p.add_argument('--vizinhos', type=int, default=12, help='amostras usadas em cada célula')
     p.add_argument('--raio', type=float, help='raio máximo de busca em metros (padrão: sem limite)')
     # classes
@@ -660,6 +665,8 @@ def _demo(args):
     print('\n— demo: etapa 2 (interpolação, classes e apostila) —')
     codigo = principal([*comuns, '--elementos', 'todos', '--fazenda', 'Fazenda Demonstração',
                         '--camada', '0–20 cm'])
+    assert all(e['idw']['potencia_usada'] == 2.0 and not e['idw']['automatica']
+               for e in json.loads((saida / 'relatorio.json').read_text(encoding='utf-8'))['elementos'])
     rel = json.loads((saida / 'relatorio.json').read_text(encoding='utf-8'))
     por_nome = {e['elemento']: e for e in rel['elementos']}
     for e in rel['elementos']:

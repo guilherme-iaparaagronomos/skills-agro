@@ -5,7 +5,7 @@ description: >-
   em hectares e em % e uma apostila em PDF. Entradas: perímetro do talhão ou
   da fazenda, pontos de amostragem (shapefile/GeoJSON/KML/CSV) e o laudo do
   laboratório. Casa os IDs do shape com os do laudo mesmo com divergências
-  (T01-03 ≈ t1-3), escolhe a potência do IDW por validação cruzada, classifica
+  (T01-03 ≈ t1-3), interpola por IDW e mede o erro por validação cruzada, classifica
   cada elemento pela tabela oficial (5ª Aproximação de MG ou Boletim 100 de
   SP) ou por limites do usuário e entrega GeoTIFF, PDF e PNG por elemento mais
   a apostila com capa e resumo. Acione com "mapa de fertilidade", "IDW",
@@ -24,8 +24,8 @@ resumo e um mapa por página.
 ## Para que serve
 - Casar os IDs do **shape de amostras** com os do **laudo** mesmo quando
   divergem ("T01-03" vs "t1-3", "Ponto 12" vs "12") e apontar o que não casou.
-- Interpolar por **IDW** (inverso da distância) com a **potência escolhida por
-  validação cruzada** — e dizer quanto o mapa prevê melhor que a média do talhão.
+- Interpolar por **IDW** (inverso da distância, potência 2) e medir por
+  **validação cruzada** quanto o mapa prevê melhor que a média do talhão.
 - **Classificar** cada elemento pela **5ª Aproximação (MG)**, pelo **Boletim
   100 (SP)**, por limites do usuário ou, sem tabela, em classes livres.
 - Entregar o mapa pronto para o cliente: PDF e PNG por elemento, GeoTIFF para
@@ -106,7 +106,9 @@ Coordenadas em metros (UTM) sem `.prj` exigem a zona: `--zona 22S`.
    (nomes exatamente como no cabeçalho do CSV; `todos` = todas as numéricas).
 7. **Entregue**: a `apostila.pdf` e, por elemento, o PNG (mostre no chat), o
    PDF e o GeoTIFF. Diga a potência usada, o RMSE da validação cruzada e o
-   ganho sobre a média, e repasse TODOS os avisos do relatório.
+   ganho sobre a média, e repasse TODOS os avisos do relatório. A logo na capa
+   e nos mapas é a do cliente: peça o arquivo ao usuário (`--logo`); se ele não
+   tiver, a apostila sai sem logo.
 8. **Honestidade**: se vier o aviso de que o IDW não previu melhor que a média
    do talhão, diga claramente que a malha não captou padrão espacial e que o
    mapa pouco difere da média. Não venda um mapa pobre como bom.
@@ -144,10 +146,11 @@ Coordenadas em metros (UTM) sem `.prj` exigem a zona: `--zona 22S`.
 - Pixel padrão **5 m** (`--pixel` muda). Em fazenda grande com malha larga,
   `--pixel 10` ou `20` gera arquivos bem menores sem perder conteúdo
   agronômico. A decisão é do usuário.
-- **Potência** `auto`: testa 1 · 1,5 · 2 · 2,5 · 3 · 4 e fica com a de menor
-  RMSE na validação cruzada leave-one-out. `--potencia 2` fixa. Se a potência
-  vencedora for a mais alta, o script avisa que o mapa fica perto do "vizinho
-  mais próximo": ofereça ao usuário a comparação com potência 2.
+- **Potência 2** é o padrão (o usual em mapas de fertilidade). A validação
+  cruzada leave-one-out roda sempre e testa 1 · 1,5 · 2 · 2,5 · 3 · 4: se outra
+  potência errar bem menos, o script avisa. `--potencia auto` adota a de menor
+  RMSE; `--potencia 3` fixa outra. Potência alta deixa o mapa perto do
+  "vizinho mais próximo", com manchas em volta de cada amostra.
 - **Vizinhos**: 12 amostras por célula (`--vizinhos`). `--raio 600` limita a
   busca em metros; célula sem amostra dentro do raio fica vazia.
 - Projeção alvo: **UTM / SIRGAS 2000** (zona automática; EPSG no rodapé).

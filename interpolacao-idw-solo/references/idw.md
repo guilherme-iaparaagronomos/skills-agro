@@ -31,19 +31,21 @@ potência, mais a amostra mais próxima manda.
 - **Não mede incerteza**: diferente da krigagem, o IDW não entrega variância.
   A única medida de erro é a validação cruzada.
 
-## Escolha da potência: validação cruzada leave-one-out
+## A potência: 2 por padrão, com a validação cruzada ao lado
 
-Para cada potência candidata (1 · 1,5 · 2 · 2,5 · 3 · 4), cada amostra é
-retirada e predita pelas `k` vizinhas; **vence a de menor RMSE**. A tabela
-completa fica em `relatorio.json` (`idw.potencias`), com o erro médio (viés)
-de cada uma.
+O padrão é a potência 2, a usual em mapas de fertilidade e a que o agrônomo
+espera ver. A validação cruzada leave-one-out roda sempre: para cada potência
+candidata (1 · 1,5 · 2 · 2,5 · 3 · 4), cada amostra é retirada e predita pelas
+`k` vizinhas. A tabela completa fica em `relatorio.json` (`idw.potencias`),
+com o erro médio (viés) de cada uma. Se outra potência tiver RMSE mais de 5%
+menor que a usada, o relatório avisa. `--potencia auto` adota a de menor RMSE.
 
 - A lista para em 4 de propósito. Acima disso o mapa vira, na prática, o
   "vizinho mais próximo" (polígonos em volta de cada amostra). Quando a
   vencedora é a 4, o script avisa e sugere comparar com a potência 2, que dá um
   mapa mais suave com RMSE em geral pouco maior.
-- `--potencia 2` (ou outro número) fixa a potência; o RMSE informado passa a
-  ser o dela.
+- O RMSE e o ganho sobre a média informados no mapa são sempre os da potência
+  usada.
 
 ## O teste contra a média
 

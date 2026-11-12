@@ -11,11 +11,13 @@ Entradas (só o perímetro e o uso do solo são obrigatórios):
   devolveu, colado num arquivo como veio (sem resumir nem arredondar).
 - --car/--car-temas: saída de `car.py` (dispensável quando o usuário só tem o
   perímetro).
-- --figuras: pasta com os mapas que as ferramentas geraram, baixados pelo
-  usuário (uso_solo_situacao.png, uso_solo_historico.png, relevo_altitude.png,
-  prodes_deter.png…), em PNG ou JPG. O dossiê sai sem figuras se a pasta não
-  vier. O GeoTIFF da imagem de satélite não entra como figura: é arquivo para
-  o QGIS; para pôr a imagem no dossiê, passe um PNG com --figura.
+- Figuras: o script tenta BAIXAR SOZINHO os mapas e a imagem de satélite pelos
+  links que estão no texto das ferramentas (por isso os links ficam no texto;
+  valem 1 hora). A imagem de satélite chega em GeoTIFF de 16 bits e é
+  convertida em figura aqui. Onde o ambiente não tem internet, o dossiê sai
+  sem figuras e avisa; aí o usuário baixa os arquivos e a pasta entra com
+  --figuras (uso_solo_situacao.png, relevo_altitude.png, rgb_AAAA-MM-DD.tif…).
+  --sem-baixar desliga a tentativa.
 
 Saídas em --saida: dossie.pdf, dossie.json (os números lidos) e
 dossie_tabelas.csv; com --png, também uma imagem por página. O script só organiza e confere somas; não interpreta.
@@ -27,17 +29,21 @@ import datetime
 import json
 import re
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 import car as modulo_car  # noqa: E402
 import geometria  # noqa: E402
+import imagem_rgb  # noqa: E402
 import leitura  # noqa: E402
 import paginas  # noqa: E402
 
 # arquivo gerado pela ferramenta → (legenda, fonte)
 FIGURAS_CONHECIDAS = [
+    (r'imagem_rgb|rgb_\d{4}-\d{2}-\d{2}', 'Imagem de satélite em cor real', 'imagem'),
     (r'uso_solo_situacao', 'Uso do solo: situação frente às datas-marco', 'uso'),
     (r'uso_solo_mapas', 'Uso do solo: mapas dos anos-marco', 'uso'),
     (r'uso_solo_historico', 'Uso do solo: histórico ano a ano', 'uso'),
@@ -45,6 +51,56 @@ FIGURAS_CONHECIDAS = [
     (r'relevo_altitude', 'Relevo: altitude e curvas de nível', 'relevo'),
     (r'relevo_declividade', 'Relevo: declividade', 'relevo'),
 ]
+# o que vale baixar dos links das ferramentas (o resto — GeoPackage, curvas — é para o QGIS)
+BAIXAR = re.compile(r'^(uso_solo_(situacao|mapas|historico)|prodes_deter|relevo_(altitude|declividade))\.png$'
+                    r'|^rgb_\d{4}-\d{2}-\d{2}\.tif$')
+TETO_DO_ARQUIVO = 12 * 1024 * 1024
+ASSINATURAS = {'.png': (b'\x89PNG',), '.tif': (b'II*\x00', b'MM\x00*')}
+
+
+def links_dos_arquivos(texto):
+    """Linhas '- nome.png (126 KB): https://…' do texto da ferramenta → [(nome, link)]."""
+    return [(nome, link.rstrip('.,;')) for nome, link in
+            re.findall(r'^- ([A-Za-z0-9_.-]+) \([^)]*\): (https://\S+)', texto, re.M)]
+
+
+def baixar_figuras(textos, pasta):
+    """Tenta baixar os mapas e a imagem pelos links dos textos. Devolve (baixados, falhas).
+    Só https, só os arquivos da lista BAIXAR, com teto de tamanho e conferência do tipo."""
+    baixados, falhas = [], []
+    for texto in textos:
+        for nome, link in links_dos_arquivos(texto or ''):
+            if not BAIXAR.match(nome) or any(b.name == nome for b in baixados):
+                continue
+            try:
+                req = urllib.request.Request(link, headers={'User-Agent': 'dossie-uso-solo-skill/1.0'})
+                with urllib.request.urlopen(req, timeout=25) as resp:
+                    corpo = resp.read(TETO_DO_ARQUIVO + 1)
+                if len(corpo) > TETO_DO_ARQUIVO:
+                    raise ValueError('arquivo acima do teto')
+                if not corpo.startswith(ASSINATURAS[Path(nome).suffix]):
+                    raise ValueError('o conteúdo não é o tipo esperado')
+            except (urllib.error.URLError, OSError, ValueError) as e:
+                falhas.append((nome, type(e).__name__))
+                continue
+            pasta.mkdir(parents=True, exist_ok=True)
+            destino = pasta / nome
+            destino.write_bytes(corpo)
+            baixados.append(destino)
+    return baixados, falhas
+
+
+def converter_imagens(pasta, avisos):
+    """GeoTIFF de cor real (rgb_AAAA-MM-DD.tif) na pasta → imagem_rgb_AAAA-MM-DD.png."""
+    for tif in sorted(Path(pasta).glob('*rgb_*.tif')):
+        data = re.search(r'\d{4}-\d{2}-\d{2}', tif.name)
+        png = Path(pasta) / f'imagem_rgb_{data.group(0) if data else "cena"}.png'
+        if png.exists():
+            continue
+        try:
+            imagem_rgb.geotiff_para_png(tif, png)
+        except (ValueError, OSError, KeyError) as e:
+            avisos.append(f'a imagem de satélite ({tif.name}) não pôde ser convertida em figura: {e}')
 ORDEM_DOS_TEMAS = ['area_consolidada', 'outros', 'vegetacao_nativa', 'reserva_legal', 'uso_restrito', 'app', 'embargo']
 
 
@@ -89,7 +145,7 @@ def temas_em_metros(caminho, z, sul):
 def achar_figuras(pasta, avulsas):
     """Devolve [(legenda, caminho, bloco|None)] na ordem do dossiê."""
     achadas = []
-    if pasta:
+    if pasta and Path(pasta).is_dir():
         arquivos = sorted(p for p in Path(pasta).iterdir() if p.is_file())
         for padrao, legenda, bloco in FIGURAS_CONHECIDAS:
             for arq in arquivos:
@@ -124,10 +180,15 @@ def principal(argv=None):
     p.add_argument('--car-temas', help='car-temas.geojson gerado por car.py')
     p.add_argument('--figuras', help='pasta com os mapas gerados pelas ferramentas')
     p.add_argument('--figura', action='append', metavar='LEGENDA=ARQUIVO', help='figura avulsa (repetível)')
+    p.add_argument('--sem-baixar', action='store_true',
+                   help='não tenta baixar os mapas pelos links dos textos')
     p.add_argument('--municipio', help='"Cidade/UF", quando não há CAR')
     p.add_argument('--solicitante')
     p.add_argument('--responsavel', help='responsável técnico')
     p.add_argument('--data', help='data do dossiê (padrão: hoje)')
+    p.add_argument('--tema', choices=['papel', 'escuro'], default='papel',
+                   help='papel = tema claro de impressão (padrão) · escuro = o terminal da marca')
+    p.add_argument('--fontes', help='pasta com as fontes do design system (.ttf), se o usuário as tiver')
     p.add_argument('--saida', default='./dossie')
     p.add_argument('--png', action='store_true', help='grava também cada página em PNG (para mostrar no chat)')
     p.add_argument('--demo', action='store_true', help='monta um dossiê de exemplo, sem rede')
@@ -137,6 +198,7 @@ def principal(argv=None):
     if not (args.perimetro and args.uso):
         p.error('--perimetro e --uso são obrigatórios (ou use --demo)')
 
+    paginas.usar_tema(args.tema, args.fontes)
     avisos = []
     uso = _ler(args.uso, leitura.ler_uso, avisos)
     if not uso.get('hoje') and not uso.get('marcos'):
@@ -165,7 +227,7 @@ def principal(argv=None):
         'imagem': (f"{imagem['satelite']} de {imagem['data']}, com {paginas.br(imagem['livre_pct'])} % do "
                    'perímetro sem nuvem') if imagem else None,
     }
-    dados ={'uso': uso, 'prodes': prodes, 'relevo': relevo, 'imagem': imagem, 'car': cadastro}
+    dados = {'uso': uso, 'prodes': prodes, 'relevo': relevo, 'imagem': imagem, 'car': cadastro}
 
     folhas = [paginas.pagina_identificacao(doc, dados, aneis, zona_txt)]
     if cadastro:
@@ -183,8 +245,26 @@ def principal(argv=None):
     if imagem:
         fonte_de['imagem'] = (f"{imagem['fonte']}; cena de {imagem['data']}, "
                               f"{paginas.br(imagem['livre_pct'])} % do perímetro sem nuvem")
+    # figuras: a pasta do usuário ou, sem ela, o que der para baixar pelos links dos textos
+    pasta_figuras, notas = (Path(args.figuras) if args.figuras else None), []
+    if not pasta_figuras and not args.sem_baixar:
+        textos = [Path(c).read_text(encoding='utf-8') for c in (args.imagem, args.uso, args.prodes, args.relevo) if c]
+        baixados, falhas = baixar_figuras(textos, Path(args.saida) / 'figuras')
+        if baixados:
+            pasta_figuras = Path(args.saida) / 'figuras'
+            notas.append(f'{len(baixados)} arquivo(s) baixado(s) pelos links: ' + ', '.join(b.name for b in baixados))
+        if falhas:
+            notas.append(f'não consegui baixar {len(falhas)} arquivo(s) pelos links ('
+                         + ', '.join(n for n, _ in falhas) + '): ambiente sem internet ou links vencidos '
+                         '(valem 1 hora). O dossiê saiu sem eles. Para incluí-los, o usuário baixa os '
+                         'arquivos e você roda de novo com --figuras <pasta>')
+        if not baixados and not falhas:
+            notas.append('os textos não trazem os links dos arquivos: o dossiê saiu sem figuras')
+    if pasta_figuras and pasta_figuras.is_dir():
+        converter_imagens(pasta_figuras, avisos)
+
     n_figuras = 0
-    for legenda, caminho, bloco in achar_figuras(args.figuras, args.figura):
+    for legenda, caminho, bloco in achar_figuras(pasta_figuras, args.figura):
         folha, ok = paginas.pagina_figura(doc, legenda, caminho, fonte_de.get(bloco))
         folhas.append(folha)
         n_figuras += int(ok)
@@ -242,6 +322,8 @@ def principal(argv=None):
                 w.writerow(['CAR declarado', t['camada'], t['rotulo'], paginas.br(t['area_ha'], 2), 'ha'])
 
     print(f'dossiê: {saida / "dossie.pdf"} ({len(folhas)} páginas, {n_figuras} figura(s))')
+    for nota in notas:
+        print(f'  figuras: {nota}')
     for a in avisos:
         print(f'  · {a}')
     if not avisos:
@@ -307,6 +389,13 @@ Cite a fonte como está: ANADEM v1 (UFRGS/ANA), derivado do Copernicus DEM GLO-3
     assert lido['avisos'] == [], lido['avisos']
     assert lido['prodes']['faixas']['depois_2019']['ha'] == 9.6 and len(lido['prodes']['poligonos']) == 3
     assert (saida / 'dossie.pdf').stat().st_size > 30000
+    # links: só https, só os arquivos da lista; falha de rede vira aviso, não erro
+    exemplo = ('- uso_solo_situacao.png (126 KB): https://127.0.0.1:9/a/uso_solo_situacao.png?token=x\n'
+               '- uso_do_solo.gpkg (596 KB): https://127.0.0.1:9/a/uso_do_solo.gpkg\n'
+               '- outro.png (1 KB): http://sem-https/outro.png')
+    assert [n for n, _ in links_dos_arquivos(exemplo)] == ['uso_solo_situacao.png', 'uso_do_solo.gpkg']
+    baixados, falhas = baixar_figuras([exemplo], saida / 'figuras-teste')
+    assert not baixados and [n for n, _ in falhas] == ['uso_solo_situacao.png'], (baixados, falhas)
     print('demo OK: dossiê de exemplo montado, sem aviso de conferência')
     return codigo
 

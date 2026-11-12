@@ -24,18 +24,21 @@ Parte do **número do CAR** (a skill busca o perímetro no SICAR), de um
 
 - O conector **ClaudIA Sat** da comunidade agrônomo10X ligado na sua IA: é
   dele que vêm o uso do solo, o PRODES, o relevo e a imagem.
-- Para buscar o CAR pelo número, um ambiente com internet. Na sandbox de
-  código do chat o site do CAR é bloqueado; nesse caso envie o arquivo do
-  perímetro.
+- Para buscar o CAR pelo número e para os mapas entrarem sozinhos no PDF, um
+  ambiente de código com internet (Claude Code, Cowork). Na sandbox do chat a
+  internet costuma ser bloqueada: envie o arquivo do perímetro e, se quiser os
+  mapas no dossiê, baixe-os pelos links e envie no chat.
 
 ## Estrutura
 
 - [`SKILL.md`](SKILL.md) — o playbook que a IA segue.
 - `scripts/` — `car.py` (perímetro e declarações do CAR, só biblioteca
   padrão) · `leitura.py` (lê os números do texto das ferramentas e confere as
-  somas) · `paginas.py` (as páginas do PDF) · `montar_dossie.py` (pipeline
-  CLI) · `geometria.py` e `shapefile_min.py` (perímetro em KML, GeoJSON,
-  shapefile ou WKT). Todos com testes embutidos; `python
+  somas) · `paginas.py` (as páginas do PDF, no design system da casa) ·
+  `imagem_rgb.py` (lê o GeoTIFF da imagem de satélite e faz a figura) ·
+  `montar_dossie.py` (pipeline CLI; baixa os mapas pelos links quando o
+  ambiente tem internet) · `geometria.py` e `shapefile_min.py` (perímetro em
+  KML, GeoJSON, shapefile ou WKT). Todos com testes embutidos; `python
   scripts/montar_dossie.py --demo` monta um dossiê de exemplo com dados
   inventados. Dependências: numpy e matplotlib.
 - `references/fontes.md` — o que é cada fonte, as datas-marco e os limites.

@@ -11,9 +11,9 @@ página).
   reais de campo ("T01-03" ≈ "t1-3", "Ponto 12" ≈ "12"); casos duvidosos vão
   para o usuário confirmar, e laudos com mais de uma profundidade são
   detectados e perguntados.
-- **Interpola por IDW** com a potência escolhida por **validação cruzada
-  leave-one-out** e informa quanto o mapa prevê melhor que a média do talhão —
-  quando não prevê, o mapa diz isso.
+- **Interpola por IDW** (potência 2 por padrão), mede o erro por **validação
+  cruzada leave-one-out** e informa quanto o mapa prevê melhor que a média do
+  talhão — quando não prevê, o mapa diz isso.
 - **Classifica** cada elemento pela **5ª Aproximação (MG)**, pelo **Boletim
   100 (SP)**, por limites do usuário ou em classes livres. Só aplica classe
   oficial quando a unidade e o método do laudo batem com a tabela; unidades

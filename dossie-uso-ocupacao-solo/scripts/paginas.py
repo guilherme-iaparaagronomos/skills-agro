@@ -8,6 +8,7 @@ diferença e diz que as definições não são as mesmas.
 """
 
 import textwrap
+from pathlib import Path
 
 import matplotlib
 
@@ -19,10 +20,64 @@ from matplotlib.patches import PathPatch, Rectangle  # noqa: E402
 from matplotlib.path import Path as Caminho  # noqa: E402
 
 A4 = (8.27, 11.69)
-ESQ, DIR, TOPO, BASE = 0.075, 0.925, 0.955, 0.075
-TINTA, CINZA, LINHA, VERDE = '#1f2933', '#6b7280', '#d1d5db', '#1a9850'
-MARCA = 'agrônomo10X · OagronomIA'
+ESQ, DIR, BASE = 0.075, 0.925, 0.085
+MARCA = 'OagronomIA'
+ASSINATURA = 'comunidade agrônomo10X'
+ROTULO_DOC = 'agrônomo10X · Dossiê de uso e ocupação do solo'
 AVISO_RODAPE = 'Reúne fatos de bases públicas e de satélite. Não é laudo, parecer nem recomendação.'
+
+# Tokens do design system da casa. "papel" é o modo claro, que o DS reserva para
+# impressão e exports (é o do laudo de satélite e do relatório de visita);
+# "escuro" é o terminal da marca. O verde é o único saturado do chrome; cores de
+# terra e de dataviz ficam só em gráficos e mapas.
+TEMAS = {
+    'papel': dict(pagina='#FBFCF9', fg1='#121810', fg2='#3C4636', fg3='#6B7562', line='#D4DBCA',
+                  line_forte='#B4BFA8', verde='#2E8B1E', mapa='#FFFFFF'),
+    'escuro': dict(pagina='#0B100B', fg1='#F2F4EE', fg2='#B8BFB1', fg3='#7C8678', line='#2A3328',
+                   line_forte='#3A4537', verde='#52C937', mapa='#131A13'),
+}
+T = dict(TEMAS['papel'])
+# papel da fonte → família. As do DS entram quando estão instaladas ou numa pasta
+# (--fontes); o pacote da skill é só texto e não carrega arquivo de fonte.
+FONTES_DO_DS = {'titulo': ('Chakra Petch', 'DejaVu Sans'), 'rotulo': ('Chakra Petch', 'DejaVu Sans'),
+                'corpo': ('Manrope', 'DejaVu Sans'), 'num': ('JetBrains Mono', 'DejaVu Sans Mono')}
+F = {papel: reserva for papel, (_, reserva) in FONTES_DO_DS.items()}
+
+
+def usar_tema(nome='papel', pasta_de_fontes=None):
+    """Liga o tema e resolve as fontes. Devolve as famílias em uso."""
+    from matplotlib import font_manager
+
+    T.clear()
+    T.update(TEMAS[nome])
+    if pasta_de_fontes:
+        for fonte in sorted(Path(pasta_de_fontes).glob('*.[ot]tf')):
+            try:
+                font_manager.fontManager.addfont(str(fonte))
+            except Exception:  # noqa: BLE001 - arquivo de fonte ilegível não derruba o dossiê
+                pass
+    instaladas = sorted({f.name for f in font_manager.fontManager.ttflist})
+    peso = {'titulo': 'semibold', 'rotulo': 'medium', 'corpo': 'medium', 'num': 'regular'}
+    for papel, (preferida, reserva) in FONTES_DO_DS.items():
+        # arquivo de peso avulso registra a família com o peso no nome ("Chakra Petch SemiBold")
+        candidatas = [n for n in instaladas if n == preferida or n.startswith(preferida + ' ')]
+        do_peso = [n for n in candidatas if peso[papel] in n.lower().replace(' ', '')]
+        F[papel] = (do_peso or candidatas or [reserva])[0]
+    matplotlib.rcParams.update({
+        'font.family': F['corpo'], 'text.color': T['fg1'], 'axes.labelcolor': T['fg3'],
+        'xtick.color': T['fg3'], 'ytick.color': T['fg3'], 'axes.edgecolor': T['line'],
+        'figure.facecolor': T['pagina'], 'axes.facecolor': T['pagina'], 'savefig.facecolor': T['pagina'],
+    })
+    return dict(F)
+
+
+usar_tema('papel')
+
+
+def espacado(texto):
+    """Caixa alta com as letras afastadas: o rótulo ("eyebrow") do design system."""
+    return '\u2009'.join(str(texto).upper())
+
 
 COR_SITUACAO = [('nativa', '#7bc977'), ('já existia', '#e2dccb'), ('2009', '#e8b13a'),
                 ('em 2020', '#e07b39'), ('depois de 2020', '#c0392b'), ('água', '#bfd3e6')]
@@ -63,74 +118,109 @@ def cor_da_classe(nome):
 
 
 class Folha:
-    """Uma página A4 com cursor vertical: cada bloco é escrito e empurra o cursor."""
+    """Uma página A4 com cursor vertical: cada bloco é escrito e empurra o cursor.
+    O chrome segue o laudo da casa: rótulo verde em caixa alta, fio fino, título de
+    seção em caixa alta, números em fonte mono e rodapé com a marca."""
 
-    def __init__(self, doc):
+    def __init__(self, doc, capa=False):
         self.doc = doc
-        self.fig = plt.figure(figsize=A4)
-        self.y = TOPO
-        self.fig.text(ESQ, 0.972, 'Dossiê de uso e ocupação do solo', fontsize=7.5, color=CINZA, va='center')
-        self.fig.text(DIR, 0.972, doc.get('nome') or '', fontsize=7.5, color=CINZA, va='center', ha='right')
+        self.fig = plt.figure(figsize=A4, facecolor=T['pagina'])
+        self.fig.text(ESQ, 0.964, espacado(ROTULO_DOC), fontsize=6.4, color=T['verde'], va='center',
+                      family=F['rotulo'], fontweight='bold')
+        if capa:
+            self.y = 0.945
+        else:
+            self.fig.text(DIR, 0.964, doc.get('nome') or '', fontsize=7.5, color=T['fg3'], va='center', ha='right')
+            self.fio(0.950)
+            self.y = 0.934
 
     @staticmethod
     def _alt(tam, linhas=1, entre=1.5):
         return tam * entre * linhas / (A4[1] * 72)
 
+    def fio(self, y, forte=False):
+        self.fig.add_artist(plt.Line2D([ESQ, DIR], [y, y], color=T['line_forte' if forte else 'line'], linewidth=0.8))
+
     def espaco(self, h=0.012):
         self.y -= h
 
-    def titulo(self, texto, sub=None):
-        self.y -= 0.012
-        self.fig.text(ESQ, self.y, texto, fontsize=19, fontweight='bold', color=TINTA, va='top')
-        self.y -= self._alt(19, 1, 1.45)
-        if sub:
-            self.fig.text(ESQ, self.y, sub, fontsize=12, color=TINTA, va='top')
-            self.y -= self._alt(12, 1, 1.6)
-        self.espaco(0.006)
+    def capa(self, titulo, subtitulo, kpis):
+        """Cabeçalho da primeira página: nome do imóvel em display itálico e os números à direita."""
+        x = DIR
+        for rotulo, valor, unidade in reversed(kpis):
+            self.fig.text(x, self.y, espacado(rotulo), fontsize=5.8, color=T['fg3'], va='top', ha='right',
+                          family=F['rotulo'])
+            self.fig.text(x, self.y - 0.016, valor, fontsize=17, color=T['fg1'], va='top', ha='right',
+                          family=F['num'], fontweight='bold')
+            self.fig.text(x, self.y - 0.043, unidade, fontsize=7, color=T['fg3'], va='top', ha='right',
+                          family=F['num'])
+            x -= 0.165
+        # o título usa só a largura que sobra à esquerda dos números
+        livre = ((x + 0.025 if kpis else DIR) - ESQ) * A4[0] * 72
+        titulo = titulo or ''
+        if len(titulo) <= int(livre / (19 * 0.62)):
+            linhas, tam = [titulo], 19
+        else:
+            linhas, tam = (textwrap.wrap(titulo, max(12, int(livre / (15 * 0.62))))[:2] or ['']), 15
+        self.fig.text(ESQ, self.y - 0.004, '\n'.join(linhas), fontsize=tam, color=T['fg1'], va='top',
+                      family=F['titulo'], fontstyle='italic', fontweight='bold', linespacing=1.12)
+        # o subtítulo desce para baixo do título E dos números: ele pode ser longo (o número do CAR)
+        y_sub = min(self.y - 0.004 - self._alt(tam, len(linhas), 1.25), self.y - 0.058 if kpis else 1) - 0.006
+        if subtitulo:
+            self.fig.text(ESQ, y_sub, subtitulo, fontsize=9.5, color=T['fg2'], va='top')
+        self.y = y_sub - self._alt(9.5, 1, 1.6)
+        self.fio(self.y)
+        self.y -= 0.014
 
     def secao(self, texto):
-        self.y -= 0.008
-        self.fig.text(ESQ, self.y, texto, fontsize=11.5, fontweight='bold', color=TINTA, va='top')
-        self.y -= self._alt(11.5, 1, 1.45)
-        self.fig.add_artist(plt.Line2D([ESQ, DIR], [self.y, self.y], color=LINHA, linewidth=0.8))
-        self.y -= 0.009
+        self.y -= 0.010
+        self.fig.text(ESQ, self.y, espacado(texto), fontsize=8.4, fontweight='bold', color=T['fg1'], va='top',
+                      family=F['rotulo'])
+        self.y -= self._alt(8.4, 1, 1.75)
+        self.fio(self.y)
+        self.y -= 0.010
 
-    def texto(self, texto, tam=9, cor=TINTA, negrito=False, recuo=0.0):
+    def texto(self, texto, tam=9, cor=None, negrito=False, recuo=0.0):
         colunas = int((DIR - ESQ - recuo) * A4[0] * 72 / (tam * 0.565))
         linhas = textwrap.wrap(texto, colunas) or ['']
-        self.fig.text(ESQ + recuo, self.y, '\n'.join(linhas), fontsize=tam, color=cor, va='top',
+        self.fig.text(ESQ + recuo, self.y, '\n'.join(linhas), fontsize=tam, color=cor or T['fg1'], va='top',
                       linespacing=1.45, fontweight='bold' if negrito else 'normal')
         self.y -= self._alt(tam, len(linhas), 1.47) + 0.004
 
     def nota(self, texto):
-        self.texto(texto, tam=7.8, cor=CINZA)
+        self.texto(texto, tam=7.8, cor=T['fg3'])
 
     def pares(self, linhas, x_valor=0.34):
         for rotulo, valor in linhas:
             if valor in (None, ''):
                 continue
-            self.fig.text(ESQ, self.y, rotulo, fontsize=9, color=CINZA, va='top')
+            self.fig.text(ESQ, self.y, rotulo, fontsize=9, color=T['fg3'], va='top')
             colunas = int((DIR - x_valor) * A4[0] * 72 / (9 * 0.565))
             partes = textwrap.wrap(str(valor), colunas) or ['']
-            self.fig.text(x_valor, self.y, '\n'.join(partes), fontsize=9, color=TINTA, va='top', linespacing=1.45)
+            self.fig.text(x_valor, self.y, '\n'.join(partes), fontsize=9, color=T['fg1'], va='top', linespacing=1.45)
             self.y -= self._alt(9, len(partes), 1.47) + 0.0035
 
     def tabela(self, colunas, linhas, tam=8.6, negrito_ultima=False):
-        """colunas: [(título, x, 'left'|'right')] · linhas: listas de texto."""
+        """colunas: [(título, x, 'left'|'right')] · linhas: listas de texto.
+        Coluna alinhada à direita é número: sai em fonte mono, como manda o DS."""
         for titulo, x, alinh in colunas:
-            self.fig.text(x, self.y, titulo, fontsize=tam - 0.8, color=CINZA, va='top', ha=alinh)
+            self.fig.text(x, self.y, espacado(titulo), fontsize=5.6, color=T['fg3'], va='top', ha=alinh,
+                          family=F['rotulo'])
         self.y -= self._alt(tam, 1, 1.5)
-        self.fig.add_artist(plt.Line2D([ESQ, DIR], [self.y, self.y], color=LINHA, linewidth=0.7))
+        self.fio(self.y)
         self.y -= 0.006
         for i, linha in enumerate(linhas):
             peso = 'bold' if negrito_ultima and i == len(linhas) - 1 else 'normal'
             for (_, x, alinh), celula in zip(colunas, linha):
-                self.fig.text(x, self.y, celula, fontsize=tam, color=TINTA, va='top', ha=alinh, fontweight=peso)
+                numero = alinh == 'right'
+                self.fig.text(x, self.y, celula, fontsize=tam - (0.5 if numero else 0), color=T['fg1'], va='top',
+                              ha=alinh, fontweight=peso, family=F['num' if numero else 'corpo'])
             self.y -= self._alt(tam, 1, 1.62)
         self.y -= 0.006
 
     def eixo(self, altura, esq=ESQ, direita=DIR):
         ax = self.fig.add_axes([esq, self.y - altura, direita - esq, altura])
+        ax.set_facecolor(T['pagina'])
         self.y -= altura + 0.012
         return ax
 
@@ -138,11 +228,14 @@ class Folha:
         return self.y - BASE
 
     def fechar(self, n, total):
-        self.fig.add_artist(plt.Line2D([ESQ, DIR], [0.052, 0.052], color=LINHA, linewidth=0.8))
-        self.fig.text(ESQ, 0.038, AVISO_RODAPE, fontsize=6.8, color=CINZA, va='center')
+        self.fio(0.060)
         data = self.doc.get('data') or ''
-        self.fig.text(DIR, 0.038, f'{data} · {MARCA} · pág. {n} de {total}', fontsize=6.8, color=CINZA,
-                      va='center', ha='right')
+        self.fig.text(ESQ, 0.046, f'{ASSINATURA} · gerado em {data}', fontsize=7, color=T['fg3'], va='center')
+        self.fig.text(ESQ, 0.032, AVISO_RODAPE, fontsize=6.4, color=T['fg3'], va='center')
+        self.fig.text(DIR, 0.040, MARCA, fontsize=10.5, color=T['fg1'], va='center', ha='right',
+                      family=F['titulo'], fontstyle='italic', fontweight='bold')
+        self.fig.text(DIR - 0.145, 0.040, f'{n}/{total}', fontsize=7.5, color=T['fg3'], va='center', ha='right',
+                      family=F['num'])
         return self.fig
 
 
@@ -151,7 +244,7 @@ def _limpar(ax):
     ax.set_xticks([])
     ax.set_yticks([])
     for lado in ax.spines.values():
-        lado.set_color(LINHA)
+        lado.set_color(T['line'])
 
 
 def _escala_e_norte(ax):
@@ -162,13 +255,13 @@ def _escala_e_norte(ax):
     base = 10 ** int(np.floor(np.log10(alvo)))
     comprimento = next((base * m for m in (5, 2, 1) if base * m <= alvo), base)
     bx, by = x0 + largura * 0.04, y0 + altura * 0.05
-    ax.plot([bx, bx + comprimento], [by, by], color='#111827', linewidth=2.5, solid_capstyle='butt')
+    ax.plot([bx, bx + comprimento], [by, by], color=T['fg1'], linewidth=2.5, solid_capstyle='butt')
     rotulo = f'{comprimento / 1000:g} km'.replace('.', ',') if comprimento >= 1000 else f'{comprimento:g} m'
     ax.annotate(rotulo, (bx + comprimento / 2, by), xytext=(0, 4), textcoords='offset points',
-                ha='center', fontsize=7, color='#111827')
+                ha='center', fontsize=7, color=T['fg1'])
     ax.annotate('N', xy=(0.955, 0.94), xycoords='axes fraction', ha='center', fontsize=9, fontweight='bold')
     ax.annotate('', xy=(0.955, 0.93), xycoords='axes fraction', xytext=(0.955, 0.85),
-                textcoords='axes fraction', arrowprops={'arrowstyle': '-|>', 'color': '#111827', 'linewidth': 1.1})
+                textcoords='axes fraction', arrowprops={'arrowstyle': '-|>', 'color': T['fg1'], 'linewidth': 1.1})
 
 
 def desenhar_perimetro(ax, aneis, temas=None):
@@ -180,7 +273,7 @@ def desenhar_perimetro(ax, aneis, temas=None):
     for anel in aneis:
         xs = [p[0] for p in anel] + [anel[0][0]]
         ys = [p[1] for p in anel] + [anel[0][1]]
-        ax.plot(xs, ys, color='#111827', linewidth=1.0)
+        ax.plot(xs, ys, color=T['fg1'], linewidth=1.0)
     todos_x = [p[0] for a in aneis for p in a]
     todos_y = [p[1] for a in aneis for p in a]
     mx, my = (max(todos_x) - min(todos_x)) * 0.06, (max(todos_y) - min(todos_y)) * 0.06
@@ -188,6 +281,7 @@ def desenhar_perimetro(ax, aneis, temas=None):
     ax.set_ylim(min(todos_y) - my, max(todos_y) + my)
     ax.set_aspect('equal')
     ax.set_anchor('C')
+    ax.set_facecolor(T['mapa'])
     _limpar(ax)
     _escala_e_norte(ax)
 
@@ -197,12 +291,12 @@ def barras_horizontais(ax, itens, unidade='ha'):
     itens = list(itens)[::-1]
     maior = max(v for _, v, _, _ in itens) or 1.0
     ax.barh(range(len(itens)), [v for _, v, _, _ in itens], color=[c for *_, c in itens],
-            edgecolor='#374151', linewidth=0.4, height=0.68)
+            edgecolor=T['line_forte'], linewidth=0.4, height=0.68)
     for i, (rotulo, valor, pct, _) in enumerate(itens):
         texto = f'{br(valor)} {unidade}' + (f'  ({br(pct, 0)} %)' if pct is not None else '')
-        ax.text(valor + maior * 0.012, i, texto, va='center', fontsize=8, color=TINTA)
+        ax.text(valor + maior * 0.012, i, texto, va='center', fontsize=8, color=T['fg1'])
     ax.set_yticks(range(len(itens)))
-    ax.set_yticklabels([r for r, *_ in itens], fontsize=8.3, color=TINTA)
+    ax.set_yticklabels([r for r, *_ in itens], fontsize=8.3, color=T['fg1'])
     ax.set_xlim(0, maior * 1.30)
     ax.set_xticks([])
     ax.tick_params(length=0)
@@ -212,9 +306,18 @@ def barras_horizontais(ax, itens, unidade='ha'):
 
 # -------------------------------------------------------------------- páginas
 def pagina_identificacao(doc, d, aneis, zona_txt):
-    f = Folha(doc)
-    f.titulo('Dossiê de uso e ocupação do solo', doc.get('nome'))
+    f = Folha(doc, capa=True)
     car = d.get('car') or {}
+    uso = d.get('uso') or {}
+    kpis = []
+    if uso.get('area_ha'):
+        kpis.append(('Área', br(uso['area_ha']), 'ha'))
+    if uso.get('hoje'):
+        kpis.append((f"Nativa em {uso['hoje']['ano']}", br(uso['hoje']['nativa_pct'], 0), '% do perímetro'))
+    if uso.get('aberto_desde'):
+        kpis.append(('Aberto após 2008', br(uso['aberto_desde'][2008]), 'ha'))
+    municipio = doc.get('municipio') or (f"{car.get('municipio')}/{car.get('uf')}" if car.get('municipio') else None)
+    f.capa(doc.get('nome'), ' · '.join(t for t in (municipio, f"CAR {car['car']}" if car.get('car') else None) if t), kpis)
     areas = [b['area_ha'] for b in (d.get('uso'), d.get('prodes'), d.get('relevo')) if b and b.get('area_ha')]
     f.secao('Identificação')
     f.pares([
@@ -303,7 +406,7 @@ def pagina_car(doc, car, aneis, temas_geo):
         nomes = {'reserva_legal': 'Reserva legal', 'vegetacao_nativa': 'Vegetação nativa',
                  'area_consolidada': 'Área consolidada', 'app': 'APP', 'uso_restrito': 'Uso restrito',
                  'embargo': 'Área embargada', 'outros': 'Outros temas'}
-        ax.legend(handles=[Rectangle((0, 0), 1, 1, facecolor=COR_TEMA.get(g, '#ccc'), edgecolor='#374151',
+        ax.legend(handles=[Rectangle((0, 0), 1, 1, facecolor=COR_TEMA.get(g, '#ccc'), edgecolor=T['line_forte'],
                                      linewidth=0.4) for g in grupos],
                   labels=[nomes.get(g, g) for g in grupos], loc='lower left', bbox_to_anchor=(1.02, 0.0),
                   fontsize=7.5, frameon=False)
@@ -365,7 +468,7 @@ def pagina_marcos(doc, uso):
         inicio = 0.0
         for nome, ha in situacao:
             cor = next((c for chave, c in COR_SITUACAO if chave in nome.lower()), '#cccccc')
-            ax.barh(0, ha, left=inicio, color=cor, edgecolor='#374151', linewidth=0.4, height=0.8)
+            ax.barh(0, ha, left=inicio, color=cor, edgecolor=T['line_forte'], linewidth=0.4, height=0.8)
             inicio += ha
         ax.set_xlim(0, total)
         ax.axis('off')
@@ -375,7 +478,7 @@ def pagina_marcos(doc, uso):
         for i, (nome, _) in enumerate(situacao):
             cor = next((c for chave, c in COR_SITUACAO if chave in nome.lower()), '#cccccc')
             f.fig.add_artist(Rectangle((ESQ, y - f._alt(8.6, i, 1.62) - 0.0115), 0.018, 0.0105,
-                                       transform=f.fig.transFigure, facecolor=cor, edgecolor='#374151',
+                                       transform=f.fig.transFigure, facecolor=cor, edgecolor=T['line_forte'],
                                        linewidth=0.4))
     aberto = uso.get('aberto_desde')
     if aberto:
@@ -391,15 +494,15 @@ def pagina_marcos(doc, uso):
         anos = [a for a, _ in por_ano]
         cores = ['#9ca3af' if a <= 2008 else '#e8b13a' if a <= 2019 else '#e07b39' if a == 2020 else '#c0392b'
                  for a in anos]
-        ax.bar(anos, [h for _, h in por_ano], color=cores, edgecolor='#374151', linewidth=0.3, width=0.8)
+        ax.bar(anos, [h for _, h in por_ano], color=cores, edgecolor=T['line_forte'], linewidth=0.3, width=0.8)
         for marco in (2008, 2019, 2020):
-            ax.axvline(marco + 0.5, color='#374151', linewidth=0.7, linestyle='--')
-        ax.set_ylabel('ha', fontsize=8, color=CINZA)
-        ax.tick_params(labelsize=7.5, colors=CINZA, length=2)
+            ax.axvline(marco + 0.5, color=T['line_forte'], linewidth=0.7, linestyle='--')
+        ax.set_ylabel('ha', fontsize=8, color=T['fg3'])
+        ax.tick_params(labelsize=7.5, colors=T['fg3'], length=2)
         for lado in ('top', 'right'):
             ax.spines[lado].set_visible(False)
         for lado in ('left', 'bottom'):
-            ax.spines[lado].set_color(LINHA)
+            ax.spines[lado].set_color(T['line'])
         f.espaco(0.016)
         f.nota('Área hoje em uso que era vegetação nativa no mapa do ano anterior. As linhas tracejadas '
                'separam 2008, 2019 e 2020. Cinza: até 2008; amarelo: 2009 a 2019; laranja: 2020; vermelho: '
@@ -590,7 +693,7 @@ def pagina_fontes(doc, fontes, avisos):
     if avisos:
         f.secao('Observações da montagem')
         for a in avisos:
-            f.texto('• ' + a, tam=8.5, cor=CINZA)
+            f.texto('• ' + a, tam=8.5, cor=T['fg3'])
     return f
 
 
@@ -610,6 +713,9 @@ if __name__ == '__main__':
     assert cor_da_classe('Formação Florestal') == '#1f8d49' and cor_da_classe('Soja') == '#e974ed'
     assert _data_br('2026-11-12') == '12/11/2026'
     doc = {'nome': 'Fazenda Exemplo', 'data': '12/11/2026'}
+    assert usar_tema('escuro')['num'] and T['pagina'] == '#0B100B' and T['verde'] == '#52C937'
+    assert usar_tema('papel')['corpo'] and T['pagina'] == '#FBFCF9' and T['verde'] == '#2E8B1E'
+    assert espacado('ab') == 'A\u2009B'
     quadrado = [[(0, 0), (1000, 0), (1000, 800), (0, 800)]]
     uso = {'area_ha': 80, 'fonte': 'MapBiomas Coleção 11', 'ano_inicial': 1985, 'ano_final': 2025,
            'hoje': {'ano': 2025, 'classes': [('Pastagem', 50, 62), ('Formação Florestal', 30, 38)],
