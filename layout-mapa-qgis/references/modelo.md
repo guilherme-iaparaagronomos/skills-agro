@@ -50,7 +50,8 @@ O modelo já cuida da maior parte. O que depende de quem monta:
    o outro da mesma apostila.
 5. **Área em toda classe.** O número que o produtor pergunta é "quantos
    hectares". O modelo sempre escreve ha e %.
-6. **Escala em número redondo**, norte e data. O modelo põe os três.
+6. **Escala em número redondo**, norte e data. O modelo põe os três; no atlas, o passo da
+   escala é recalculado em cada página.
 7. **Talhões por cima**, com contorno fino e sem preenchimento, para a cor do
    mapa aparecer. O modelo já desenha assim, sem mexer no estilo da camada.
 8. **Sem dado é branco.** Área sem amostra ou fora do raster não recebe cor.
@@ -70,8 +71,11 @@ O modelo já cuida da maior parte. O que depende de quem monta:
 
 ## Limites da v1
 
-- No atlas (uma página por talhão), a página mostra o nome e a área do talhão, mas a legenda
-  segue com as áreas do mapa inteiro, e os talhões vizinhos aparecem em volta.
+- No atlas (uma página por talhão), a página mostra o nome e a área do talhão, que sai com o
+  contorno grosso; os vizinhos aparecem em volta, com o contorno fino e cinza. A legenda segue
+  com as áreas do mapa inteiro.
+- O layout do atlas é separado do layout do mapa inteiro (outro nome): exportado fora do
+  atlas, o nome e a área do talhão saem em branco.
 - Página em pé não está no modelo.
 - O texto usa a fonte Arial; onde ela não existe, o QGIS troca por outra
   parecida e o espaçamento pode mudar um pouco.

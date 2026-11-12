@@ -13,8 +13,8 @@ e média.
 - Classifica o raster pelos limites que o usuário der, quando ele ainda está
   em cor contínua.
 - Calcula as áreas por classe e monta o layout em A4 ou A3.
-- Exporta em PDF e PNG e, com o atlas, uma página por talhão, com o nome e a
-  área de cada um.
+- Exporta em PDF e PNG e, com o atlas, uma página por talhão, com o nome, a
+  área e o contorno do talhão em destaque.
 - Não altera o estilo das camadas do usuário: os talhões saem só com o
   contorno no mapa do layout.
 

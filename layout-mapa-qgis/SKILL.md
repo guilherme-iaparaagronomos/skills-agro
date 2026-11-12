@@ -52,45 +52,54 @@ conector **ClaudIA QGIS**; nada roda no chat.
 3. **Pergunte o que vai escrito no mapa** (o que ele não disser, fica vazio):
    título; fazenda; proprietário; safra; atributo; profundidade ou outra
    informação; unidade das classes; A4 ou A3; e a logo (caminho do arquivo na
-   máquina dele, PNG, JPG ou SVG).
+   máquina dele, PNG, JPG ou SVG). O **nome do layout** você mesmo monta com o
+   atributo e a profundidade (ex.: `Argila 0-20`) e diz a ele qual é.
 4. **Avise e instale o módulo.** Diga ao usuário, numa frase, o que vai
    fazer: gravar o arquivo `layout_agro.py` na pasta de trabalho e carregá-lo
    no QGIS, sem alterar nenhuma camada. Com o ok dele, mande o **Bloco A** por
    `execute_code`. Uma vez por conversa basta.
-5. **Confira se a camada está em classes.** Raster em cor contínua ou vetor de
-   símbolo único não tem legenda de classes. Pergunte os limites e use o
-   **Bloco C**. Avise antes: isso troca o estilo da camada dele.
-6. **Monte o layout** com o **Bloco D**. O resultado traz as classes com ha e
+5. **Confira a camada** com o **Bloco C**. Ele diz se a camada já está em
+   classes e lista os campos da camada dos talhões. Raster em cor contínua ou
+   vetor de símbolo único não tem legenda de classes: pergunte os limites e
+   use o **Bloco D**. Avise antes: isso troca o estilo da camada dele.
+6. **Monte o layout** com o **Bloco E**. O resultado traz as classes com ha e
    %, a área total, o mínimo, o máximo, a média e a escala. **Mostre esses
    números ao usuário** e pergunte se batem com o que ele espera.
 7. **Exporte para ele ver**: tool `export_layout` com `layout_name`, `path`
    (um arquivo dentro da pasta de trabalho), `format` (`png` ou `pdf`) e
-   `dpi`. Diga o caminho. Você não enxerga o arquivo: peça que ele abra e diga
-   se algo ficou cortado, sobreposto ou escondido.
-8. **Ajuste o que ele pedir** e rode o Bloco D de novo, com TODOS os
-   argumentos (o layout de mesmo nome é refeito do zero, inclusive o atlas).
-   Para um retoque fora do modelo, use `add_layout_label` e
-   `add_layout_picture` sobre o layout já montado.
-9. **Uma página por talhão** (se ele pedir): Bloco D com `atlas_camada` e
-   `atlas_campo`, depois a tool `export_atlas` (`layout_name`, `output_path`,
-   `format: "pdf"`, `dpi: 150`). Cada página traz o nome e a área do talhão.
-   Avise duas coisas: a legenda continua com as áreas do mapa inteiro, e os
-   talhões vizinhos aparecem em volta.
+   `dpi: 150`. Diga o caminho. Você não enxerga o arquivo: peça que ele abra e
+   diga se algo ficou cortado, sobreposto ou escondido.
+8. **Ajuste o que ele pedir** e rode o Bloco E de novo, com TODOS os
+   argumentos (o layout de mesmo nome é refeito do zero). Para um retoque
+   fora do modelo, use `add_layout_label` e `add_layout_picture` sobre o
+   layout já montado.
+9. **Uma página por talhão** (se ele pedir): confirme com ele qual campo da
+   camada dos talhões tem o nome (o Bloco C listou os campos com exemplos).
+   Rode o Bloco E com o acréscimo do atlas e com **outro nome de layout**
+   (o mesmo nome + ` por talhão`), para o layout do mapa inteiro continuar
+   existindo. Depois, a tool `export_atlas` (`layout_name`, `output_path`,
+   `format: "pdf"`, `dpi: 150`). Cada página traz o nome e a área do talhão,
+   que aparece com o contorno grosso; os vizinhos ficam em cinza. Avise que a
+   legenda continua com as áreas do mapa inteiro. Não exporte o layout do
+   atlas pelo `export_layout`: fora do atlas, o nome e a área do talhão saem
+   em branco.
 10. **Vários atributos**: repita os passos 5 a 7 para cada camada, um layout
     por atributo, mudando o nome do layout, `Atributo` e a unidade.
 
 ## Os blocos de código
 
 Mande cada bloco como está, começando na primeira coluna. Troque só o que
-está entre `<< >>`.
+está entre `<< >>`. Em `<<pasta que o usuário indicou>>` vai a pasta do
+passo 2; com o projeto salvo essa pasta não é usada, e o marcador pode ficar
+como está.
 
 ### Bloco A — instalar o módulo (uma vez por conversa)
 
 O conteúdo de `scripts/layout_agro.py` vai INTEIRO dentro de `CODIGO`, sem
-alteração. O bloco confere se o arquivo chegou completo.
+alteração. O bloco confere se o arquivo chegou completo e fiel.
 
 ```python
-import os, sys
+import hashlib, os, sys
 from qgis.core import QgsProject
 BASE = QgsProject.instance().homePath() or r'<<pasta que o usuário indicou>>'
 CODIGO = r'''
@@ -106,16 +115,19 @@ if pasta not in sys.path:
 sys.modules.pop('layout_agro', None)
 import layout_agro as la
 assert getattr(la, 'FIM_DO_ARQUIVO', False), 'o arquivo chegou cortado: mande o bloco de novo'
-print('layout_agro pronto em', pasta, '|', len(CODIGO), 'caracteres')
+fiel = hashlib.md5(''.join(CODIGO.split()).encode('utf-8')).hexdigest()[:12] == 'ffdbcb413df1'
+print('layout_agro pronto em', pasta, '|', 'cópia fiel' if fiel else 'CÓPIA DIFERENTE do original')
 ```
 
-Se o `assert` ou o `compile` falhar, o código foi cortado ou alterado na
-cópia: mande o bloco de novo, com o arquivo inteiro, sem resumir nem pular
-função.
+- Se o `assert` ou o `compile` falhar, o código foi cortado: mande o bloco de
+  novo, com o arquivo inteiro, sem resumir nem pular função.
+- Se imprimir `CÓPIA DIFERENTE`, algum trecho foi alterado na cópia: mande o
+  bloco de novo, com o arquivo exatamente como está. Se repetir, siga em
+  frente e avise o usuário de que o módulo pode ter diferença do original.
 
 ### Bloco B — cabeçalho de toda chamada seguinte
 
-Cada `execute_code` é uma execução nova: comece os blocos C e D com isto.
+Cada `execute_code` é uma execução nova: comece os blocos C, D e E com isto.
 
 ```python
 import os, sys
@@ -128,7 +140,22 @@ import layout_agro as la
 p = QgsProject.instance()
 ```
 
-### Bloco C — pôr o raster em classes (depois do Bloco B)
+### Bloco C — conferir as classes e os campos dos talhões (depois do Bloco B)
+
+```python
+camada = p.mapLayer('<<id da camada do mapa>>')
+try:
+    print('EM CLASSES:', [c['rotulo'] for c in la.areas_por_classe(camada)[0]])
+except ValueError as erro:
+    print('SEM CLASSES:', erro)
+talhoes = p.mapLayer('<<id dos talhões>>')
+amostra = [f for _, f in zip(range(3), talhoes.getFeatures())]
+print('CAMPOS DOS TALHÕES:', {c.name(): [str(f[c.name()]) for f in amostra] for c in talhoes.fields()})
+```
+
+Sem camada de talhões, apague as três últimas linhas.
+
+### Bloco D — pôr o raster em classes (depois do Bloco B)
 
 ```python
 camada = p.mapLayer('<<id da camada do mapa>>')
@@ -139,7 +166,7 @@ print(la.classificar_raster(camada, [<<limites, ex.: 150, 250, 350, 450>>]))
 Al). Em vetor, o usuário categoriza ou gradua no QGIS, ou você usa
 `set_layer_style`.
 
-### Bloco D — montar o layout (depois do Bloco B)
+### Bloco E — montar o layout (depois do Bloco B)
 
 ```python
 resumo = la.montar_layout(
@@ -150,7 +177,8 @@ resumo = la.montar_layout(
 print(resumo)
 ```
 
-Para o atlas, acrescente antes do parêntese final:
+Para o atlas, troque o nome do layout (ex.: `Argila 0-20 por talhão`) e
+acrescente antes do parêntese final:
 `atlas_camada=p.mapLayer('<<id dos talhões>>'), atlas_campo='<<campo com o nome do talhão>>'`.
 O `resumo` passa a trazer `atlas_paginas`.
 
@@ -187,6 +215,8 @@ O `resumo` passa a trazer `atlas_paginas`.
   (pixel de borda e áreas sem dado explicam a diferença).
 - **Projeção do mapa**: se a camada estiver em graus, o mapa do layout é posto
   na zona UTM SIRGAS 2000 do local, para a escala sair em metros.
+- **Escala**: o passo é sempre um número redondo que cabe na coluna; no atlas
+  ele é recalculado em cada página.
 - **Mínimo, máximo e média** são do raster inteiro (ou do campo do vetor
   graduado), não das amostras.
 - Raster acima de 30 milhões de pixels é lido reduzido para a contagem; a

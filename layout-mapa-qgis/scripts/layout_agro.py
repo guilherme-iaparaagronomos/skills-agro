@@ -25,12 +25,12 @@ import math
 
 try:
     from qgis.core import (
-        QgsCategorizedSymbolRenderer, QgsColorRampShader, QgsCoordinateReferenceSystem,
+        QgsBasicNumericFormat, QgsCategorizedSymbolRenderer, QgsColorRampShader, QgsCoordinateReferenceSystem,
         QgsCoordinateTransform, QgsDistanceArea, QgsFillSymbol, QgsGraduatedSymbolRenderer, QgsLayoutExporter,
         QgsLayoutItemLabel, QgsLayoutItemMap, QgsLayoutItemMapGrid, QgsLayoutItemPicture,
-        QgsLayoutItemScaleBar, QgsLayoutItemShape, QgsLayoutPoint, QgsLayoutSize, QgsMapLayerStyle,
-        QgsPalettedRasterRenderer, QgsPrintLayout, QgsProject, QgsRasterLayer, QgsRasterShader,
-        QgsScaleBarSettings, QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsUnitTypes,
+        QgsLayoutItemScaleBar, QgsLayoutItemShape, QgsLayoutObject, QgsLayoutPoint, QgsLayoutSize,
+        QgsMapLayerStyle, QgsPalettedRasterRenderer, QgsPrintLayout, QgsProject, QgsProperty, QgsRasterLayer,
+        QgsRasterShader, QgsRuleBasedRenderer, QgsScaleBarSettings, QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsUnitTypes,
         QgsVectorLayer,
     )
     from qgis.PyQt.QtCore import Qt
@@ -228,13 +228,27 @@ def _crs_em_metros(camada):
     return QgsCoordinateReferenceSystem(f'EPSG:{(31960 if centro.y() < 0 else 31954) + zona}')
 
 
-def _so_contorno(camada, espessura=0.3):
+def _linha(cor, largura):
+    return QgsFillSymbol.createSimple({'color': '0,0,0,0', 'style': 'no', 'outline_color': cor,
+                                       'outline_width': str(largura), 'outline_style': 'solid'})
+
+
+def _so_contorno(camada, espessura=0.3, destaque=False):
     """Estilo "só o contorno, sem preenchimento" para desenhar os talhões por cima do mapa.
-    É montado numa CÓPIA: a camada do usuário não é tocada."""
+    É montado numa CÓPIA: a camada do usuário não é tocada. Com destaque (atlas), o talhão da
+    página sai com o contorno grosso e os vizinhos com o contorno fino e cinza."""
     copia = camada.clone()
-    copia.setRenderer(QgsSingleSymbolRenderer(QgsFillSymbol.createSimple(
-        {'color': '0,0,0,0', 'style': 'no', 'outline_color': '0,0,0,255', 'outline_width': str(espessura),
-         'outline_style': 'solid'})))
+    if destaque:
+        raiz = QgsRuleBasedRenderer.Rule(None)
+        da_pagina = QgsRuleBasedRenderer.Rule(_linha('0,0,0,255', espessura * 2.6))
+        da_pagina.setFilterExpression('@atlas_featureid = $id')
+        vizinhos = QgsRuleBasedRenderer.Rule(_linha('120,120,120,255', espessura * 0.8))
+        vizinhos.setIsElse(True)
+        raiz.appendChild(da_pagina)
+        raiz.appendChild(vizinhos)
+        copia.setRenderer(QgsRuleBasedRenderer(raiz))
+    else:
+        copia.setRenderer(QgsSingleSymbolRenderer(_linha('0,0,0,255', espessura)))
     estilo = QgsMapLayerStyle()
     estilo.readFromLayer(copia)
     return estilo.xmlData()
@@ -243,6 +257,15 @@ def _so_contorno(camada, espessura=0.3):
 def _passo_redondo(valor):
     base = 10 ** math.floor(math.log10(valor))
     return next((base * m for m in (5, 2, 1) if base * m <= valor), base)
+
+
+PASSOS_DA_ESCALA = (8, 6, 5, 4, 3, 2.5, 2, 1.5, 1)
+
+
+def _passo_da_escala(valor):
+    """Maior passo redondo (1, 1,5, 2, 2,5, 3, 4, 5, 6 ou 8 vezes uma potência de 10) que não passa do valor."""
+    base = 10 ** math.floor(math.log10(valor))
+    return next((base * m for m in PASSOS_DA_ESCALA if base * m <= valor), base)
 
 
 def montar_layout(nome, camada, titulo='Mapa', fazenda='', proprietario='', campos=None, perimetro=None,
@@ -305,6 +328,7 @@ def montar_layout(nome, camada, titulo='Mapa', fazenda='', proprietario='', camp
     # ---- o mapa
     crs = _crs_em_metros(camada)
     mapa = QgsLayoutItemMap(layout)
+    mapa.setId('mapa')
     mapa.setCrs(crs)
     visiveis = ([perimetro] if perimetro else []) + list(camadas_extra or []) + [camada]
     mapa.setLayers(visiveis)
@@ -312,7 +336,8 @@ def montar_layout(nome, camada, titulo='Mapa', fazenda='', proprietario='', camp
     mapa.setKeepLayerStyles(True)  # o layout guarda o estilo de agora: a legenda escrita não desmente o mapa
     if perimetro and contorno_perimetro:
         estilos = dict(mapa.layerStyleOverrides())
-        estilos[perimetro.id()] = _so_contorno(perimetro, 0.3 * k)
+        da_pagina = atlas_camada is not None and atlas_camada.id() == perimetro.id()
+        estilos[perimetro.id()] = _so_contorno(perimetro, 0.3 * k, destaque=da_pagina)
         mapa.setLayerStyleOverrides(estilos)
     layout.addLayoutItem(mapa)
     mx, my = m, m + topo
@@ -347,8 +372,11 @@ def montar_layout(nome, camada, titulo='Mapa', fazenda='', proprietario='', camp
     dados = list(campos or []) + [('Área Total', f'{br(area_total, casas)} ha')]
     if atlas_camada is not None:
         # em cada página: o nome e a área do talhão; as áreas da legenda seguem sendo as do mapa inteiro
-        area_do_talhao = ("[% format_number(area(transform(@atlas_geometry, layer_property(@atlas_layerid, 'crs'), '"
-                          + crs.authid() + "')) / 10000, 2) %] ha")
+        # o número sai em pt-BR mesmo num QGIS em outro idioma (o try cobre o QGIS antigo, sem o 3º argumento)
+        hectares = ("area(transform(@atlas_geometry, layer_property(@atlas_layerid, 'crs'), '" + crs.authid()
+                    + "')) / 10000")
+        area_do_talhao = ('[% coalesce(try(format_number(' + hectares + ", 2, 'pt_BR')), format_number("
+                          + hectares + ', 2)) %] ha')
         dados = ([(atlas_rotulo, '[% @atlas_pagename %]'), (f'Área do {atlas_rotulo.lower()}', area_do_talhao)]
                  + list(campos or []) + [('Área do mapa', f'{br(area_total, casas)} ha')])
     alt_linha = 7.2 * k
@@ -387,18 +415,37 @@ def montar_layout(nome, camada, titulo='Mapa', fazenda='', proprietario='', camp
     barra = QgsLayoutItemScaleBar(layout)
     barra.setLinkedMap(mapa)
     barra.setStyle('Line Ticks Up')
-    metros = mapa.extent().width() * (col - 14 * k) / mw   # quanto de terreno cabe na largura da coluna
+    largura_util = col - 24 * k                       # mm que a barra inteira pode ocupar na coluna
+    por_mm = largura_util / 4 / 1000                  # metros de terreno por segmento = escala × por_mm
+    passo = _passo_da_escala(mapa.scale() * por_mm)   # passo redondo que cabe em 4 segmentos
     # no atlas cada página tem a sua escala: metros servem a qualquer talhão
-    quilometros = metros >= 4000 and atlas_camada is None
+    quilometros = passo >= 1000 and atlas_camada is None
     barra.setUnits(QgsUnitTypes.DistanceKilometers if quilometros else QgsUnitTypes.DistanceMeters)
     barra.setUnitLabel('km' if quilometros else 'Metros')
     barra.setNumberOfSegments(4)
     barra.setNumberOfSegmentsLeft(0)
-    # o QGIS escolhe um passo redondo que caiba na coluna, em qualquer escala (e em cada página do atlas)
-    barra.setSegmentSizeMode(QgsScaleBarSettings.SegmentSizeFitWidth)
-    # os limites são da barra INTEIRA: larga o bastante para os números não se encostarem, sem passar da coluna
-    barra.setMinimumBarWidth(34 * k)
-    barra.setMaximumBarWidth(col - 24 * k)
+    barra.setSegmentSizeMode(QgsScaleBarSettings.SegmentSizeFixed)
+    barra.setUnitsPerSegment(passo / 1000 if quilometros else passo)
+    # números da escala iguais em qualquer idioma do QGIS: sem separador de milhar, vírgula decimal
+    numeros = QgsBasicNumericFormat()
+    numeros.setShowThousandsSeparator(False)
+    numeros.setShowTrailingZeros(False)
+    if hasattr(numeros, 'setDecimalSeparator'):
+        numeros.setDecimalSeparator(',')
+    barra.setNumericFormat(numeros)
+    if atlas_camada is not None and hasattr(QgsLayoutObject, 'ScalebarSegmentWidth'):
+        # a mesma conta do passo redondo, refeita pelo QGIS na escala de cada página
+        faixas = ' '.join(f'WHEN @m >= {m} THEN {m}' for m in PASSOS_DA_ESCALA[:-1])
+        conta = ("with_variable('alvo', map_get(item_variables('mapa'), 'map_scale') * " + repr(por_mm)
+                 + ", with_variable('base', 10 ^ floor(log10(@alvo)), with_variable('m', @alvo / @base, "
+                 + '@base * CASE ' + faixas + ' ELSE 1 END)))')
+        barra.dataDefinedProperties().setProperty(QgsLayoutObject.ScalebarSegmentWidth,
+                                                  QgsProperty.fromExpression(conta))
+    elif atlas_camada is not None:
+        # QGIS antigo: ele mesmo ajusta o passo à largura (os limites são da barra INTEIRA)
+        barra.setSegmentSizeMode(QgsScaleBarSettings.SegmentSizeFitWidth)
+        barra.setMinimumBarWidth(34 * k)
+        barra.setMaximumBarWidth(largura_util)
     barra.setFont(QFont(FONTE, max(5, int(7 * k))))
     layout.addLayoutItem(barra)
     barra.attemptMove(_ponto(xc + 4 * k, y_escala + 3 * k))
@@ -487,8 +534,8 @@ def exportar_atlas(nome, caminho_pdf, dpi=150):
 # a última definição do arquivo: só é verdadeira se o módulo chegou INTEIRO ao QGIS (cópia cortada
 # não chega até aqui; cópia com uma função a menos dá falso)
 _PARTES = ('PALETA', 'br', 'cores_para', 'classificar_raster', '_matriz', 'areas_por_classe', '_ponto', '_tamanho',
-           '_caixa', '_texto', '_crs_em_metros', '_so_contorno', '_passo_redondo', 'montar_layout', '_largura',
-           'exportar', 'exportar_atlas')
+           '_caixa', '_texto', '_crs_em_metros', '_linha', '_so_contorno', '_passo_redondo', 'PASSOS_DA_ESCALA',
+           '_passo_da_escala', 'montar_layout', '_largura', 'exportar', 'exportar_atlas')
 FIM_DO_ARQUIVO = all(parte in globals() for parte in _PARTES)
 
 
@@ -507,6 +554,14 @@ if __name__ == '__main__':
     assert sum(1 for linha in fonte.splitlines() if linha.startswith('FIM_DO_ARQUIVO')) == 1
     # toda função do arquivo tem de estar na lista que confere a cópia
     definidas = [linha[4:].split('(')[0] for linha in fonte.splitlines() if linha.startswith('def ')]
-    assert FIM_DO_ARQUIVO and sorted(definidas + ['PALETA']) == sorted(_PARTES), 'atualize _PARTES'
+    assert FIM_DO_ARQUIVO and sorted(definidas + ['PALETA', 'PASSOS_DA_ESCALA']) == sorted(_PARTES), 'atualize _PARTES'
+    assert [_passo_da_escala(v) for v in (1.2, 180, 470, 999, 7300)] == [1, 150, 400, 800, 6000]
+    # a cópia que a IA manda ao QGIS é conferida por esta assinatura, que o SKILL.md traz escrita
+    import hashlib
+    import os
+    assinatura = hashlib.md5(''.join(fonte.split()).encode('utf-8')).hexdigest()[:12]
+    skill = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, 'SKILL.md')
+    if os.path.exists(skill):
+        assert assinatura in open(skill, encoding='utf-8').read(), 'atualize a assinatura no SKILL.md: ' + assinatura
     print('layout_agro OK (funções de texto, cores e escala)' +
           ('' if DENTRO_DO_QGIS else ' — o layout só é montado dentro do QGIS, pela ClaudIA QGIS'))
