@@ -74,7 +74,7 @@ em **um zip por formato**:
 
 ```
 <base>-geojson.zip     → PI-2200053-....geojson · PE-2606309-....geojson
-<base>-shapefile.zip   → cada CAR com seu .shp/.shx/.dbf/.prj
+<base>-shapefile.zip   → cada CAR com seu .shp/.shx/.dbf/.prj/.cpg
 <base>-kml.zip         → PI-2200053-....kml · PE-2606309-....kml
 ```
 
@@ -155,7 +155,7 @@ Por baixo: `GET .../geoserver/consulta_publica/ows` (WFS 2.0, GetFeature,
 `iru` é o perímetro; as demais (`arl_*`, `vegetacao_nativa`,
 `area_consolidada`, `app_*` etc.) filtram pelo mesmo campo. A conversão
 (`converter.py`) é **Python puro** (sem GDAL): escreve Shapefile
-(.shp/.shx/.dbf/.prj num .zip) e KML, tudo em SIRGAS 2000. Abre direto no
+(.shp/.shx/.dbf/.prj/.cpg num .zip) e KML, tudo em SIRGAS 2000. Abre direto no
 QGIS/Google Earth e serve de **perímetro para a skill `interpolacao-krigagem`**.
 Detalhes das camadas em `references/api-sicar.md`.
 

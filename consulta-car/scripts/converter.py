@@ -116,9 +116,19 @@ def _bbox_geral(feicoes: list[dict]) -> tuple[float, float, float, float]:
     return (min(xs), min(ys), max(xs), max(ys)) if xs else (0, 0, 0, 0)
 
 
+def _corta_utf8(texto: str, limite: int) -> bytes:
+    """O texto em UTF-8, com no máximo `limite` bytes, sem partir uma letra acentuada ao meio."""
+    dados = texto.encode("utf-8", "replace")
+    if len(dados) <= limite:
+        return dados
+    return dados[:limite].decode("utf-8", "ignore").encode("utf-8")
+
+
 def _dbf(campos: list[str], registros: list[list[str]]) -> bytes:
+    # a largura do campo é em BYTES: letra acentuada ocupa dois em UTF-8
+    # (medir em letras cortava o fim de "São Pedro do Turvo")
     larguras = [
-        max(10, min(80, max([len(str(r[i])) for r in registros] + [len(campos[i])])))
+        max(10, min(80, max([len(str(r[i]).encode("utf-8", "replace")) for r in registros] + [len(campos[i])])))
         for i in range(len(campos))
     ]
     tam_registro = 1 + sum(larguras)
@@ -132,13 +142,13 @@ def _dbf(campos: list[str], registros: list[list[str]]) -> bytes:
     for r in registros:
         out += b" "  # flag "não deletado"
         for valor, larg in zip(r, larguras):
-            out += str(valor).encode("utf-8", "replace")[:larg].ljust(larg, b" ")
+            out += _corta_utf8(str(valor), larg).ljust(larg, b" ")
     out += b"\x1a"
     return out
 
 
 def shapefile_partes(colecao: dict) -> dict[str, bytes]:
-    """Os 4 arquivos do shapefile (.shp/.shx/.dbf/.prj) em MEMÓRIA — quem
+    """Os 5 arquivos do shapefile (.shp/.shx/.dbf/.prj/.cpg) em MEMÓRIA — quem
     chama decide se grava em disco ou empacota num zip (útil p/ montar um
     zip com um shapefile POR CAR)."""
     feicoes = [f for f in colecao.get("features", []) if _aneis(f["geometry"])]
@@ -170,6 +180,7 @@ def shapefile_partes(colecao: dict) -> dict[str, bytes]:
         "shx": bytes(shx),
         "dbf": _dbf(campos, registros),
         "prj": PRJ_SIRGAS2000.encode("utf-8"),
+        "cpg": b"UTF-8",  # diz ao programa que abre o .dbf que os acentos estão em UTF-8
     }
 
 

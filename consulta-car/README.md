@@ -17,7 +17,7 @@ fiscais e data de cadastro** — um número de cada vez no chat, ou uma
   relatório do que foi preenchido, não encontrado ou está inválido.
 - **Vários CARs (lista no chat ou planilha)**: cada imóvel vira um arquivo
   PRÓPRIO, empacotado em um zip por formato — `-geojson.zip`,
-  `-shapefile.zip` (com o conjunto .shp/.shx/.dbf/.prj de cada CAR) e
+  `-shapefile.zip` (com o conjunto .shp/.shx/.dbf/.prj/.cpg de cada CAR) e
   `-kml.zip`. Nada de tudo junto num arquivo só.
 - Leitor e escritor de **XLSX embutidos** — o script roda com a biblioteca
   padrão do Python (3.9+), sem nenhuma dependência.
