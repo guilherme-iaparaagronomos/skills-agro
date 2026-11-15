@@ -147,6 +147,10 @@ data da última imagem.
   vieram na linha `RESUMO`; os dias de chuva e a maior chuva, da linha `AGRO`.
 - **Chuva da safra**: a tabela mês a mês e o total. O mês em curso vem
   parcial: escreva até que dia ele vai.
+- **Os dois blocos de chuva não fecham entre si** quando a safra já passa de
+  6 meses: período curto e período longo saem de contas diferentes da
+  ferramenta, e o mesmo mês pode dar dois números, com diferença da ordem de
+  10%. Não some um com o outro; cada bloco vale com o seu período.
 - **Previsão**: as linhas do texto pronto, sem refazer conta, e a linha da
   fonte no fim do boletim, exatamente como a ferramenta manda.
 

@@ -189,6 +189,12 @@ de cada vez ou continuar no dia seguinte.
 - **Chuva do evento**: da `clima_historico` em escala de dia, o total, a média
   histórica do mesmo período e a diferença em %, como vieram; a maior chuva e
   o dia; os dias sem dado.
+- **Janela curta e tabela mensal não fecham entre si.** O total de uma janela
+  de menos de 6 meses e os meses de um período longo saem de contas
+  diferentes da ferramenta: o mesmo mês pode dar dois números, com diferença
+  da ordem de 10%, e a diferença em % contra a média histórica muda junto.
+  Ponha os dois blocos, cada um com o período, não some um com o outro e não
+  escolha o que mostra mais seca ou mais chuva.
 - **Acumulados** (chuva em excesso): some os dias seguidos da lista só se o
   ambiente roda código; se não roda, cite os dias um a um e o total da
   ferramenta.
