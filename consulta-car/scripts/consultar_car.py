@@ -95,7 +95,7 @@ def consultar(car: str) -> dict | None:
 
 # --------------------------------------------- resolução OFFLINE (sem rede)
 # o código IBGE do município está EMBUTIDO no número do CAR: os 7 dígitos
-# após a UF. Com a tabela oficial (references/municipios_ibge.tsv), dá para
+# após a UF. Com a tabela oficial (references/municipios_ibge_*.tsv), dá para
 # preencher município e estado SEM acessar o SICAR — útil quando o ambiente
 # bloqueia a internet (ex.: sandbox do chat). Lat/long/área ainda exigem a
 # API, mas 2 colunas já saem de graça e o resultado é auditável.
@@ -123,8 +123,9 @@ def _carregar_ibge() -> dict[str, tuple[str, str]]:
     global _TABELA_IBGE
     if _TABELA_IBGE is None:
         _TABELA_IBGE = {}
-        arq = Path(__file__).resolve().parent.parent / "references" / "municipios_ibge.tsv"
-        if arq.exists():
+        # a tabela vem em três arquivos por região (cada um abaixo de 64 KB, o teto de arquivo do catálogo)
+        pasta = Path(__file__).resolve().parent.parent / "references"
+        for arq in sorted(pasta.glob("municipios_ibge*.tsv")):
             for linha in arq.read_text(encoding="utf-8").splitlines():
                 partes = linha.split("\t")
                 if len(partes) >= 3:

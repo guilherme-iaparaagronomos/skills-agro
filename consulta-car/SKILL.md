@@ -100,8 +100,9 @@ recebe **`403 host_not_allowed`** e o fetch de URL também falha. Isso é
 limite do ambiente, não da skill — e ela trata assim:
 
 1. **Preenchimento OFFLINE (sempre roda)**: o código IBGE do município está
-   embutido no número do CAR (os 7 dígitos após a UF). Com
-   `references/municipios_ibge.tsv` (5.571 municípios), o script preenche
+   embutido no número do CAR (os 7 dígitos após a UF). Com a tabela de
+   municípios do IBGE que vem na pasta `references/` (5.571 municípios, em
+   três arquivos por região), o script preenche
    **município, estado e UF sem tocar a rede** — e marca a linha como
    PARCIAL. Só latitude, longitude, área e módulos fiscais exigem a API.
 2. Se você (IA) TIVER uma ferramenta de fetch que alcance o site (algumas
