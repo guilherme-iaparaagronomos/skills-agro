@@ -76,9 +76,23 @@ def _curto(texto, fonte, tam, larg):
 
 
 # ------------------------------------------------------------------ página 1
+def _logo(doc):
+    """A logo da empresa de quem fez a visita, no alto à esquerda, em um cartão branco. Devolve quanto o cabeçalho desce."""
+    logo = doc.v.get('logo')
+    if logo is None:
+        return 0.0
+    escala = min(160.0 / logo.size[0], 38.0 / logo.size[1])
+    lw, lh = logo.size[0] * escala, logo.size[1] * escala
+    topo = H - 28
+    doc.pdf.ret(MARGEM, topo - lh - 10, lw + 12, lh + 10, raio=5, preencher=T['branco'], contorno=T['linha'], espessura=0.6)
+    doc.pdf.imagem(logo, MARGEM + 6, topo - lh - 5, lw, lh, sem_perda=True)
+    return lh + 22
+
+
 def _cabecalho(doc):
+    topo = H - _logo(doc)             # com logo, o resto do cabeçalho desce
     v, pdf = doc.v, doc.pdf
-    pdf.texto(MARGEM, H - 46, EYEBROW, 'H', 7.4, T['verde_texto'], tracking=1.6)
+    pdf.texto(MARGEM, topo - 46, EYEBROW, 'H', 7.4, T['verde_texto'], tracking=1.6)
     contagens = [('FOTOS', str(v['n_fotos'])), ('ÁUDIOS', str(v['audios']))]
     if v['n_notas']:
         contagens.append(('NOTAS', str(v['n_notas'])))
@@ -89,17 +103,17 @@ def _cabecalho(doc):
     x = W - MARGEM
     for rotulo, valor in reversed(contagens):
         larg = max(largura(valor, 'HB', 19), largura(rotulo, 'H', 6.3, 1.3))
-        pdf.texto(x, H - 46, rotulo, 'H', 6.3, T['tinta3'], alinh='dir', tracking=1.3)
-        pdf.texto(x, H - 72, valor, 'HB', 19, T['tinta1'], alinh='dir')
+        pdf.texto(x, topo - 46, rotulo, 'H', 6.3, T['tinta3'], alinh='dir', tracking=1.3)
+        pdf.texto(x, topo - 72, valor, 'HB', 19, T['tinta1'], alinh='dir')
         x -= larg + 20
     livre = x - MARGEM
     tam = 19.0
     while tam > 12.5 and largura(v['fazenda'], 'HBI', tam) > livre:
         tam -= 0.5
-    pdf.texto(MARGEM, H - 72, _curto(v['fazenda'], 'HBI', tam, livre), 'HBI', tam, T['tinta1'])
-    pdf.texto(MARGEM, H - 90, f'{v["cidade"]} / {v["estado"]} · {v["data"]:%d/%m/%Y}', 'H', 9.8, T['tinta3'])
-    pdf.linha(MARGEM, H - 104, W - MARGEM, H - 104, T['linha'], 0.9)
-    doc.y = H - 104
+    pdf.texto(MARGEM, topo - 72, _curto(v['fazenda'], 'HBI', tam, livre), 'HBI', tam, T['tinta1'])
+    pdf.texto(MARGEM, topo - 90, f'{v["cidade"]} / {v["estado"]} · {v["data"]:%d/%m/%Y}', 'H', 9.8, T['tinta3'])
+    pdf.linha(MARGEM, topo - 104, W - MARGEM, topo - 104, T['linha'], 0.9)
+    doc.y = topo - 104
 
 
 def _dados(doc):
@@ -367,7 +381,7 @@ def _autoteste():
         paginas = gerar(v, pasta / 'relatorio.pdf', datetime(2025, 11, 17, 18, 43))
         tamanho = (pasta / 'relatorio.pdf').stat().st_size
         assert 2 <= paginas <= 5 and 60_000 < tamanho < 3_000_000, (paginas, tamanho)
-        sem = dict(v, satelite=None, perimetro=None, paradas=[], incluir_transcricoes=False,
+        sem = dict(v, logo=None, satelite=None, perimetro=None, paradas=[], incluir_transcricoes=False,
                    grupos=[dict(g, parada=None) for g in v['grupos']])
         assert gerar(sem, pasta / 'sem-local.pdf') >= 2
         try:
@@ -386,7 +400,7 @@ def _autoteste():
                            'Imagem INVENTADA', 'NOTA · 09:25', 'foto-04.png'):
                 assert trecho.replace(' ', '') in texto, trecho
             assert len(links) == 3 and links[0].startswith('https://www.google.com/maps?q=-22.70752')
-            assert imagens == 7, imagens                               # 2 mapas e 5 fotos
+            assert imagens == 8, imagens                               # a logo, 2 mapas e 5 fotos
             doc = fitz.open(str(pasta / 'sem-local.pdf'))
             texto = '\n'.join(p.get_text() for p in doc).replace(' ', '')
             doc.close()

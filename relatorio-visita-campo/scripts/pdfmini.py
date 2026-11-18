@@ -214,13 +214,17 @@ class Pdf:
         self.paginas[self._atual]['links'].append((x, y, x + w, y + h, limpar(url)))
 
     # ---- imagens
-    def imagem(self, im, x, y, w, h, raio=0, qualidade=82):
-        """Desenha uma imagem do Pillow no retângulo (x, y, w, h), esticada para ele, com canto redondo opcional."""
+    def imagem(self, im, x, y, w, h, raio=0, qualidade=82, sem_perda=False):
+        """Desenha uma imagem do Pillow no retângulo (x, y, w, h), esticada para ele, com canto redondo opcional.
+        `sem_perda` guarda a imagem sem a compressão de foto: é para logo e desenho de traço, que o JPEG borra."""
         if im.mode != 'RGB':
             im = im.convert('RGB')
-        buf = io.BytesIO()
-        im.save(buf, format='JPEG', quality=qualidade, optimize=True)
-        self._imagens.append((buf.getvalue(), im.size[0], im.size[1]))
+        if sem_perda:
+            self._imagens.append((zlib.compress(im.tobytes(), 9), im.size[0], im.size[1], 'FlateDecode'))
+        else:
+            buf = io.BytesIO()
+            im.save(buf, format='JPEG', quality=qualidade, optimize=True)
+            self._imagens.append((buf.getvalue(), im.size[0], im.size[1], 'DCTDecode'))
         indice = len(self._imagens)
         self.paginas[self._atual]['imagens'].add(indice)
         corte = f'{_caminho_ret(x, y, w, h, raio)} W n ' if raio > 0 else ''
@@ -241,9 +245,9 @@ class Pdf:
         n_fontes = [novo(f'<< /Type /Font /Subtype /Type1 /BaseFont /{FONTES[f]} /Encoding /WinAnsiEncoding >>')
                     for f in self._fontes]
         n_imagens = []
-        for dados, w, h in self._imagens:
+        for dados, w, h, filtro in self._imagens:
             cab = (f'<< /Type /XObject /Subtype /Image /Width {w} /Height {h} /ColorSpace /DeviceRGB '
-                   f'/BitsPerComponent 8 /Filter /DCTDecode /Length {len(dados)} >>\nstream\n').encode('latin-1')
+                   f'/BitsPerComponent 8 /Filter /{filtro} /Length {len(dados)} >>\nstream\n').encode('latin-1')
             n_imagens.append(novo(cab + dados + b'\nendstream'))
         recursos_fontes = ' '.join(f'/F{i + 1} {n} 0 R' for i, n in enumerate(n_fontes))
         n_das_paginas = []
@@ -310,6 +314,7 @@ def _autoteste():
     pdf.circulo(100, 600, 9, preencher='#2F8B1F', contorno='#FFFFFF')
     pdf.poligono([(200, 560), (260, 640), (320, 560)], contorno='#121810', recorte=(200, 560, 100, 60, 4))
     pdf.imagem(Image.new('RGB', (64, 48), (90, 140, 60)), 40, 400, 200, 150, raio=8)
+    pdf.imagem(Image.new('RGB', (40, 20), (35, 117, 20)), 300, 400, 80, 40, sem_perda=True)
     y = pdf.paragrafo(40, 380, 'Um parágrafo comprido o bastante para quebrar em mais de uma linha dentro da largura dada.', 180)
     assert y < 380
     pdf.nova_pagina()
@@ -338,7 +343,9 @@ def _autoteste():
             texto = doc[0].get_text()
             assert 'Aplicação (teste) \\ fim' in texto and 'à direita' in texto and 'rodapé posto depois' in texto, texto
             assert [l['uri'] for l in doc[0].get_links()] == ['https://exemplo.com/?q=-22.5,-50.9']
-            assert len(doc[0].get_images()) == 1 and doc.metadata['title'] == 'Relatório de teste'
+            assert len(doc[0].get_images()) == 2 and doc.metadata['title'] == 'Relatório de teste'
+            cor = doc[0].get_pixmap(dpi=72).pixel(340, int(A4[1]) - 420)            # o meio da imagem sem perda
+            assert cor == (35, 117, 20), cor
             doc.close()
     print('pdfmini.py: autoteste ok (larguras, quebra de linha, 2 páginas, imagem, link'
           + (', relido por outro leitor de PDF)' if fitz else ')'))

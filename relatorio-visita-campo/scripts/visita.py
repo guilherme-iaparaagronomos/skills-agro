@@ -20,6 +20,7 @@ OPCIONAIS = ['proprietario', 'empresa', 'safra', 'cultura', 'talhoes', 'tipo']
 TIPOS_DE_VISITA = ['Monitoramento de pragas', 'Monitoramento de doenças', 'Plantas daninhas', 'Nutrição e fertilidade',
                    'Plantio', 'Colheita', 'Vistoria geral']
 ORIGENS = {'usuario': 'informada por quem visitou', 'foto': 'GPS da foto', 'area': 'centro da área'}
+SEM_LOGO = ('false', 'sem logo', 'nenhuma', 'não', 'nao', 'não tem', 'nao tem')
 TETO = {'curto': 120, 'titulo': 90, 'texto': 4000, 'resumo': 1200, 'observacao': 500}
 _HORA = re.compile(r'^([01]?\d|2[0-3]):([0-5]\d)$')
 
@@ -106,6 +107,21 @@ def conferir(bruto, pasta='.', hoje=None):
         obs = []
     v['observacoes'] = [x for x in (limpo(o, TETO['observacao']) for o in obs[:10]) if x]
 
+    # ---- logo da empresa de quem fez a visita: ou o arquivo, ou a resposta de que não há
+    import fotos as F
+    v['logo'] = None
+    logo = bruto.get('logo')
+    if logo is False or str(logo).strip().lower() in SEM_LOGO:
+        pass
+    elif logo in (None, ''):
+        problemas.append('falta a logo da empresa de quem fez a visita ("logo"): peça o arquivo ao usuário (PNG ou JPEG). '
+                         'Se ele disser que não tem ou não quer, grave "logo": false')
+    else:
+        try:
+            v['logo'] = F.ler_logo(pasta / str(logo))
+        except F.FotoInvalida as e:
+            problemas.append(f'logo: {e}')
+
     # ---- paradas (os pontos da visita)
     v['paradas'], numeros = [], set()
     for i, p in enumerate(bruto.get('paradas') or [], 1):
@@ -132,7 +148,6 @@ def conferir(bruto, pasta='.', hoje=None):
                              'origem': ORIGENS.get(origem, limpo(origem, 60))})
 
     # ---- grupos (os assuntos), com as notas e as fotos de cada um
-    import fotos as F
     v['grupos'], usadas, horas = [], {}, []
     grupos = bruto.get('grupos') or []
     if not isinstance(grupos, list) or not grupos:
@@ -360,7 +375,7 @@ def _autoteste():
             Image.new('RGB', (400, 300), (90, 140, 60)).save(pasta / nome)
         base = {
             'fazenda': 'Fazenda Exemplo', 'cidade': 'Cidade Exemplo', 'estado': 'MT', 'data': '17/11/2025', 'visitante': 'Fulano de Tal',
-            'cultura': 'Soja', 'resumo': 'Lavoura em V4.', 'observacoes': ['Quem visitou indicou reavaliar em sete dias.'],
+            'cultura': 'Soja', 'logo': False, 'resumo': 'Lavoura em V4.', 'observacoes': ['Quem visitou indicou reavaliar em sete dias.'],
             'paradas': [{'n': 1, 'lat': -22.68545, 'lon': -50.9854, 'hora': '10:11', 'nome': 'Pivô 1'}],
             'grupos': [{'titulo': 'Pivô 1: estande', 'texto': 'Estande uniforme.', 'parada': 1,
                         'notas': [{'hora': '10:12', 'texto': 'Chuva de 40 mm no sábado, segundo o produtor.'}],
@@ -377,7 +392,7 @@ def _autoteste():
         assert '## Transcrição dos áudios' in md and 'maps?q=-22.685450,-50.985400' in md
         assert cabecalho_da_parada(v, v['grupos'][0]) == 'Parada 1 (Pivô 1) · 10:11 · -22,68545; -50,98540'
 
-        ruim = dict(base, fazenda='', data='31/02/2025', resumo='', paradas=[{'lat': -95, 'lon': -50}, {'lat': 'x', 'lon': 1}],
+        ruim = dict(base, fazenda='', logo='', data='31/02/2025', resumo='', paradas=[{'lat': -95, 'lon': -50}, {'lat': 'x', 'lon': 1}],
                     grupos=[{'titulo': '', 'parada': 7, 'fotos': ['f1.jpg', 'f1.jpg', 'nao-existe.jpg']}, {'titulo': 'Vazio'}],
                     satelite={'rgb': 'falta.tif'}, perimetro='falta.geojson', inicio='25:00')
         try:
@@ -386,9 +401,9 @@ def _autoteste():
             texto = ' | '.join(e.problemas)
             for trecho in ('falta o nome da fazenda', 'não foi entendida', 'falta o resumo', 'fora do globo', 'têm de ser números',
                            'falta o título', 'cita a parada 7', 'já está no assunto 1', 'não encontrado', 'está vazio',
-                           'falta.tif', 'falta a data da cena', 'perímetro', 'fora do formato HH:MM'):
+                           'falta.tif', 'falta a data da cena', 'perímetro', 'fora do formato HH:MM', 'falta a logo'):
                 assert trecho in texto, (trecho, texto)
-            assert len(e.problemas) >= 13
+            assert len(e.problemas) >= 14
         else:
             raise AssertionError('devia recusar')
         try:
@@ -400,8 +415,20 @@ def _autoteste():
         sem_local = conferir(dict(base, paradas=[], grupos=[{'titulo': 'Geral', 'texto': 'Sem ponto.'}]), pasta, hoje=date(2025, 11, 20))
         assert any('nenhuma localização' in a for a in sem_local['avisos'])
         assert 'Nenhuma localização foi informada' in texto_md(sem_local)
+        # a logo: o arquivo, ou a resposta de que não há; sem nenhum dos dois, o script manda pedir
+        Image.new('RGB', (300, 90), (35, 117, 20)).save(pasta / 'logo.png')
+        com_logo = conferir(dict(base, logo='logo.png'), pasta, hoje=date(2025, 11, 20))
+        assert com_logo['logo'].size == (300, 90) and v['logo'] is None
+        assert conferir(dict(base, logo='sem logo'), pasta, hoje=date(2025, 11, 20))['logo'] is None
+        for valor, trecho in (('nao-existe.png', 'logo: nao-existe.png'), (None, 'falta a logo')):
+            try:
+                conferir(dict(base, logo=valor), pasta, hoje=date(2025, 11, 20))
+            except VisitaInvalida as e:
+                assert trecho in e.problemas[0], e.problemas
+            else:
+                raise AssertionError('devia cobrar a logo')
         assert limpo('a​\x07  b\n', 50) == 'a b'
-    print('visita.py: autoteste ok (visita conferida, texto do relatório, 15 problemas apontados de uma vez)')
+    print('visita.py: autoteste ok (visita conferida, logo, texto do relatório, 16 problemas apontados de uma vez)')
 
 
 if __name__ == '__main__':

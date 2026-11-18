@@ -90,6 +90,17 @@ def _foto_folha():
     return im
 
 
+def _logo():
+    """Logo inventada, com fundo transparente."""
+    im = Image.new('RGBA', (520, 150), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([10, 15, 130, 135], radius=24, fill=(35, 117, 20, 255))
+    d.polygon([(40, 105), (70, 45), (100, 105)], fill=(255, 255, 255, 255))
+    d.rounded_rectangle([160, 45, 490, 69], radius=8, fill=(11, 16, 11, 255))
+    d.rounded_rectangle([160, 87, 410, 111], radius=8, fill=(90, 100, 82, 255))
+    return im
+
+
 def gravar(pasta):
     """Grava a visita inventada na pasta e devolve o caminho do visita.json."""
     import fotos as F
@@ -101,6 +112,7 @@ def gravar(pasta):
     F.gravar_com_exif(_foto_lavoura((150, 118, 80)), pasta / 'fotos' / 'foto-02.jpg', dia.replace(hour=9, minute=21), PARADAS[0][1], PARADAS[0][2])
     F.gravar_com_exif(_foto_lavoura((120, 150, 70), 12), pasta / 'fotos' / 'foto-03.jpg', dia.replace(hour=10, minute=15))
     _foto_folha().save(pasta / 'fotos' / 'foto-04.png')
+    _logo().save(pasta / 'logo-exemplo.png')
     F.gravar_com_exif(_foto_lavoura((88, 132, 58), 24), pasta / 'fotos' / 'foto-05.jpg', dia.replace(hour=11, minute=20))
 
     # dois talhões inventados, em graus, e a "imagem de satélite" de mentira (textura suave)
@@ -124,7 +136,7 @@ def gravar(pasta):
 
     visita = {
         'fazenda': 'Fazenda Exemplo (dados inventados)', 'cidade': 'Cidade Exemplo', 'estado': 'SP', 'data': '2025-11-17',
-        'visitante': 'Responsável técnico de exemplo', 'empresa': 'Consultoria de exemplo', 'proprietario': 'Produtor de exemplo',
+        'visitante': 'Responsável técnico de exemplo', 'empresa': 'Consultoria de exemplo', 'logo': 'logo-exemplo.png', 'proprietario': 'Produtor de exemplo',
         'safra': '2025/26', 'cultura': 'Soja', 'talhoes': 'Pivô 1, Baixada e Talhão 12', 'tipo': 'Vistoria geral',
         'resumo': 'Soja em V4 no Pivô 1, com falhas de plantio na cabeceira. Na Baixada, quem visitou relatou solo encharcado em '
                   'cerca de dois hectares, com plantas amareladas. No Talhão 12 foi relatada a presença de percevejo-marrom.',

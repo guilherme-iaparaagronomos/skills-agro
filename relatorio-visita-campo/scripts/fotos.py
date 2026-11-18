@@ -84,6 +84,32 @@ def ler(caminho, lado=LADO_MAXIMO):
             'lat': lat, 'lon': lon, 'formato': formato}
 
 
+def ler_logo(caminho, lado=900):
+    """A logo da empresa de quem fez a visita, pronta para o cabeçalho: sobre fundo branco (a transparência do PNG
+    vira branco) e reduzida. Levanta FotoInvalida com o motivo."""
+    caminho = Path(caminho)
+    if not caminho.is_file():
+        raise FotoInvalida(f'{caminho.name}: arquivo da logo não encontrado')
+    if caminho.suffix.lower() in ('.svg', '.pdf', '.ai', '.eps', '.cdr'):
+        raise FotoInvalida(f'{caminho.name}: logo em {caminho.suffix[1:].upper()} não é lida. Peça em PNG ou JPEG')
+    try:
+        with Image.open(caminho, formats=FORMATOS) as im:
+            im = ImageOps.exif_transpose(im)
+            im.thumbnail((lado, lado), Image.LANCZOS)
+            if im.mode in ('RGBA', 'LA', 'P'):
+                im = im.convert('RGBA')
+                fundo = Image.new('RGBA', im.size, (255, 255, 255, 255))
+                im = Image.alpha_composite(fundo, im)
+            pronta = im.convert('RGB')
+    except Image.DecompressionBombError:
+        raise FotoInvalida(f'{caminho.name}: imagem da logo grande demais')
+    except Exception:
+        raise FotoInvalida(f'{caminho.name}: a logo não abre como PNG, JPEG ou WebP. Peça em um desses formatos')
+    if pronta.size[0] < 40 or pronta.size[1] < 16:
+        raise FotoInvalida(f'{caminho.name}: logo pequena demais ({pronta.size[0]}×{pronta.size[1]} px) para sair legível')
+    return pronta
+
+
 def inventario(pasta):
     """Lê todas as fotos de uma pasta (em ordem de nome). Devolve (lista de fotos lidas, lista de mensagens de erro)."""
     pasta = Path(pasta)
@@ -157,7 +183,22 @@ def _autoteste():
         assert [x['arquivo'] for x in lidas] == ['a.jpg', 'b.png'] and len(erros) == 2
         t = texto_do_inventario(lidas, erros)
         assert '1 de 2 com GPS' in t and 'NÃO LIDA' in t and '17/11/2025 10:04' in t
-    print('fotos.py: autoteste ok (data e GPS do EXIF, redução, giro, 3 recusas)')
+        # logo: a transparência vira branco; SVG e imagem minúscula são recusadas
+        transparente = Image.new('RGBA', (300, 100), (0, 0, 0, 0))
+        transparente.paste((35, 117, 20, 255), (20, 20, 120, 80))
+        transparente.save(pasta / 'logo.png')
+        logo = ler_logo(pasta / 'logo.png')
+        assert logo.mode == 'RGB' and logo.getpixel((5, 5)) == (255, 255, 255) and logo.getpixel((60, 50)) == (35, 117, 20)
+        (pasta / 'logo.svg').write_text('<svg/>', encoding='utf-8')
+        Image.new('RGB', (20, 10)).save(pasta / 'mini.png')
+        for nome, trecho in (('logo.svg', 'SVG'), ('mini.png', 'pequena demais'), ('sem.png', 'não encontrado'), ('c.jpg', 'não abre')):
+            try:
+                ler_logo(pasta / nome)
+            except FotoInvalida as e:
+                assert trecho in str(e), (nome, str(e))
+            else:
+                raise AssertionError(f'devia recusar a logo {nome}')
+    print('fotos.py: autoteste ok (data e GPS do EXIF, redução, giro, logo sobre branco, 7 recusas)')
 
 
 if __name__ == '__main__':

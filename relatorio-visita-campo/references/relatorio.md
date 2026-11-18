@@ -12,6 +12,7 @@ arquivo são relativos à pasta onde ele está.
   "estado": "MT",
   "data": "2025-11-17",
   "visitante": "Nome de quem fez a visita",
+  "logo": "logo.png",
 
   "proprietario": "Nome do proprietário",
   "empresa": "Consultoria",
@@ -51,6 +52,7 @@ arquivo são relativos à pasta onde ele está.
 | Campo | Obrigatório | O que é |
 |---|---|---|
 | `fazenda`, `cidade`, `estado`, `data`, `visitante` | sim | o cabeçalho. A data em `AAAA-MM-DD` ou `dd/mm/aaaa` |
+| `logo` | sim | o arquivo da logo da empresa de quem fez a visita (PNG, JPEG ou WebP), que vai no alto da primeira página; `false` quando o usuário respondeu que não tem ou não quer. Sem o campo, a conferência acusa e manda pedir a logo |
 | `proprietario`, `empresa`, `safra`, `cultura`, `talhoes`, `tipo` | não | o cartão "Dados da visita"; o que ficar de fora não aparece |
 | `resumo` | sim | até 3 frases |
 | `observacoes` | não | de 3 a 6 frases curtas |
@@ -64,14 +66,19 @@ arquivo são relativos à pasta onde ele está.
 | `perimetro` | não | arquivo do contorno, em graus: GeoJSON, KML, shapefile ou WKT |
 | `satelite` | não | `rgb` (e `ndvi`): os `.tif` da ferramenta; `data` da cena; `sem_nuvem_pct` |
 
-Regras que o script confere: cada foto em um assunto só; foto que abre como
-JPEG, PNG ou WebP; parada citada em um assunto existe; coordenada dentro do
-globo; data que não está no futuro; hora em `HH:MM`.
+Regras que o script confere: a logo informada (arquivo que abre, ou `false`);
+cada foto em um assunto só; foto que abre como JPEG, PNG ou WebP; parada
+citada em um assunto existe; coordenada dentro do globo; data que não está no
+futuro; hora em `HH:MM`.
+
+A logo sai sobre fundo branco (a transparência do PNG vira branco), no alto à
+esquerda da primeira página, com até 160 pontos de largura e 38 de altura.
+Logo com menos de 40 × 16 pixels é recusada, por sair ilegível.
 
 ## A estrutura do relatório
 
 A mesma no PDF, no `relatorio.md` e, sem ambiente de código, no texto da
-conversa:
+conversa (a logo só aparece no PDF):
 
 ```
 # Relatório de visita técnica — [fazenda]
