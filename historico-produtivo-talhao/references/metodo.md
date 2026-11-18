@@ -14,15 +14,15 @@ conta do índice.
 
 1. **Uma linha por data.** Duas imagens no mesmo dia viram uma, com a média.
 2. **Série emendada.** As janelas consultadas (um ano agrícola depois do
-   outro) são juntadas numa série só por talhão. Janelas separadas por mais de
+   outro) são juntadas em uma série só por talhão. Janelas separadas por mais de
    20 dias viram trechos independentes, e o quadro avisa.
 3. **Queda isolada.** Sai da conta a imagem que fica `queda` (padrão 0,10) ou
    mais abaixo da anterior e também da seguinte, com as duas a até 20 dias
-   dela. É o desenho de nuvem ou sombra que sobrou: o índice cai numa imagem e
+   dela. É o desenho de nuvem ou sombra que sobrou: o índice cai em uma imagem e
    volta na outra. Queda que não volta fica na série, porque pode ser
    colheita, dessecação ou geada. O quadro diz quantas imagens saíram, e a
    figura marca cada uma com ×.
-4. **Picos.** É candidato o ponto mais alto que os vizinhos (num patamar, a
+4. **Picos.** É candidato o ponto mais alto que os vizinhos (em um patamar, a
    primeira data). O candidato vale como pico de um ciclo quando o índice sobe
    pelo menos `amplitude_min` (padrão 0,20) acima do menor valor de cada lado,
    olhando até encontrar um ponto mais alto que ele ou a ponta da série. Na

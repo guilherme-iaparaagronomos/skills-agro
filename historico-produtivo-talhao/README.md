@@ -32,7 +32,7 @@ historico-produtivo-talhao/
   scripts/
     calendario.py        entrada: --conferir, a rodada e --demo
     leitura.py           lê as respostas das ferramentas coladas em texto
-    ciclos.py            acha os ciclos numa curva
+    ciclos.py            acha os ciclos em uma curva
     historico.py         junta as safras e monta o quadro
     saidas.py            CSV, figuras e PDF
     sintetico.py         quatro safras inventadas para a demonstração
@@ -61,12 +61,19 @@ Skills; em outras IAs compatíveis, a pasta de skills do projeto).
 - **Dados reais, tirados das ferramentas**: 5 safras de uma fazenda de cerca
   de 90 ha, como área única, e 2 safras da mesma fazenda talhão por talhão
   (5 talhões), com as respostas copiadas para arquivo como a skill manda. É
-  uma fazenda só, numa região só. Foi nesse teste que apareceram dois
+  uma fazenda só, em uma região só. Foi nesse teste que apareceram dois
   defeitos, já corrigidos: uma colheita era lida como queda isolada, e um
   patamar com ondulação virava dois ciclos.
 - **O que não foi feito**: comparar as datas com o caderno de campo de uma
   fazenda (plantio e colheita anotados); rodar a skill inteira dentro de uma
-  conversa em duas IAs diferentes; testar com mais de 8 talhões numa chamada.
+  conversa em duas IAs diferentes; testar com mais de 8 talhões em uma chamada.
+
+- **As fontes dos dados**: desde 18/11/2026 as ferramentas fecham cada
+  resposta com o bloco "FONTES DOS DADOS", e o quadro e o PDF citam essas
+  linhas como vieram. Conferido com uma resposta real da `curva_com_chuva`
+  colada inteira (uma janela curta, de uma área pequena) e com a
+  demonstração; sem o bloco no arquivo, o script avisa. As cinco safras do
+  teste anterior não foram consultadas de novo.
 
 ## Avisos
 

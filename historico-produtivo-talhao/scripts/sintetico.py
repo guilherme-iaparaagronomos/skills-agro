@@ -92,8 +92,16 @@ def respostas():
             linhas.append(f'Talhão {nome}: ' + ' · '.join(pares))
         linhas += ['', f'RESUMO: total {_br(total, 1)} mm · média histórica (1991–2020) do mesmo período: {_br(normal, 1)} mm → '
                        f'{dif:+d}% · confiança alta']
+        # as respostas de verdade fecham com este bloco; aqui as fontes dizem que o dado é inventado
+        linhas += ['', 'FONTES DOS DADOS (cite no fim da resposta a fonte de cada dado que você usar, como está):',
+                   f'- Índice: exemplo inventado, sem dado de satélite de verdade ({ano + 1}).',
+                   '- Chuva: exemplo inventado, sem dado de chuva de verdade.']
         textos.append('\n'.join(linhas) + '\n')
     return textos
+
+
+FONTES_ESPERADAS = ['Índice: exemplo inventado, sem dado de satélite de verdade (2022, 2023, 2024, 2025).',
+                    'Chuva: exemplo inventado, sem dado de chuva de verdade.']
 
 
 def gravar(pasta):

@@ -1,4 +1,4 @@
-"""Acha os ciclos de vegetação numa curva de índice (data e valor de cada imagem)
+"""Acha os ciclos de vegetação em uma curva de índice (data e valor de cada imagem)
 e estima quando cada um começou, chegou ao pico e terminou.
 
 A curva é o que o satélite viu: a média do índice na área, no dia de cada imagem
@@ -78,7 +78,7 @@ def tirar_quedas(pontos, queda, vizinhanca):
 
 def _lados(v, i):
     """Para o ponto i: quanto ele sobe acima do menor valor de cada lado, e se o lado acabou na borda
-    da janela (True) ou num ponto maior que ele (False)."""
+    da janela (True) ou em um ponto maior que ele (False)."""
     esq, borda_esq = v[i], True
     for j in range(i - 1, -1, -1):
         if v[j] > v[i]:

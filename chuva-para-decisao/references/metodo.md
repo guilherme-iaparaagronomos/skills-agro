@@ -14,10 +14,11 @@ distribuição nem previsão.
   dias de chuva, veranico máximo, maior chuva).
 - **Ano em curso**: as frases da `contexto_chuva`, copiadas sem mexer.
 
-Fonte: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).
+Fontes: as que a ferramenta escreve no bloco "FONTES DOS DADOS", no fim de
+cada resposta. O relato as repete como vieram.
 
 **As duas réguas.** A ferramenta monta a chuva de período longo (seis meses ou
-mais) de um jeito e a de período curto de outro. No teste da skill, num ponto
+mais) de um jeito e a de período curto de outro. No teste da skill, em um ponto
 do Centro-Oeste, os meses da tabela longa ficaram cerca de 10% acima da soma
 dos dias da janela curta, nos dez anos comparados. Por isso a skill não cruza
 os dois blocos: as contagens mensais usam só a tabela mensal, e as contagens
@@ -40,7 +41,7 @@ informou:
 - os graus-dia somados contra o total, quando há.
 
 A soma e a contagem pegam dia pulado ou repetido. A maior chuva e o veranico
-pegam trecho deslocado. Dois erros que se anulam num trecho sem chuva (um zero
+pegam trecho deslocado. Dois erros que se anulam em um trecho sem chuva (um zero
 a menos aqui, um zero a mais ali, longe do veranico máximo) podem passar: o
 efeito é deslocar um dia de chuva em um dia.
 
@@ -125,7 +126,7 @@ Se a regra fecha no primeiro dia da janela, as águas podem ter firmado antes:
 o relato diz "ou antes". Comece a janela ainda na seca.
 
 **Fim das águas**, com o número `E` informado: o último dia com pelo menos `L`
-mm antes da primeira sequência de `E` ou mais dias secos seguidos, numa janela
+mm antes da primeira sequência de `E` ou mais dias secos seguidos, em uma janela
 do fim da estação. Se a sequência começa no primeiro dia da janela, as águas
 já tinham terminado antes. Se não há sequência desse tamanho inteira dentro da
 janela, não terminaram na janela.

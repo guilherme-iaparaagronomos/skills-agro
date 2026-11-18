@@ -1,5 +1,5 @@
 """Monta o histórico de cada talhão a partir das safras lidas: emenda as janelas
-numa série só, acha os ciclos e põe cada safra lado a lado, com a chuva.
+em uma série só, acha os ciclos e põe cada safra lado a lado, com a chuva.
 
 Só descreve. Não compara safra "melhor" e "pior", não estima produtividade e
 não diz a cultura: o satélite mostra o verde, não o que foi plantado.
@@ -52,6 +52,7 @@ def montar(safras, parametros=None, abaixo_pct=20):
     p = C.conferir_parametros({**C.PADRAO, **(parametros or {})})
     saida = {
         'indice': safras[0]['indice'], 'parametros': p, 'abaixo_pct': abs(abaixo_pct), 'avisos': [],
+        'fontes': L.fontes_de(safras),
         'safras': [{'rotulo': s['rotulo'], 'inicio': s['inicio'], 'fim': s['fim'], 'dias': s['dias'], 'origem': s['origem'],
                     'periodo_informado': s['periodo_informado'], 'avisos': list(s['avisos']), **_chuva(s, abaixo_pct)}
                    for s in safras],
@@ -187,13 +188,19 @@ def quadro_md(h, nome=None):
             linhas.append(f'| {r["safra"]} | {r["imagens"]} | {r["maior_intervalo"]} dias, de {r["intervalo_de"]:%d/%m/%Y} a '
                           f'{r["intervalo_ate"]:%d/%m/%Y} | {br(r["maximo"])} em {dmy(r["maximo_data"])} | {r["ciclos"]} | {r["tiradas"]} |')
         linhas.append('')
-    linhas += ['## Fontes', '',
-               f'- Índice ({h["indice"]}): Copernicus Sentinel-2 L2A, média da área em cada imagem limpa; processado pelas '
-               'ferramentas da comunidade agrônomo10X (OagronomIA).',
-               '- Chuva: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).', '',
-               'O quadro descreve o que o satélite e o registro de chuva mostram. Índice de vegetação não é '
-               'produtividade, e a cultura de cada ciclo não é identificada. A interpretação é do responsável técnico.']
+    linhas += ['## Fontes', ''] + [f'- {f}' for f in linhas_das_fontes(h)]
+    linhas += ['', 'O quadro descreve o que o satélite e o registro de chuva mostram. Índice de vegetação não é '
+                   'produtividade, e a cultura de cada ciclo não é identificada. A interpretação é do responsável técnico.']
     return '\n'.join(linhas) + '\n'
+
+
+SEM_FONTES = ('Não informadas nos arquivos lidos: as respostas coladas não trazem o bloco "FONTES DOS DADOS" com que as '
+              'ferramentas fecham cada resposta.')
+
+
+def linhas_das_fontes(h):
+    """As fontes como as ferramentas escreveram nas respostas coladas; sem elas, a frase que diz que faltaram."""
+    return list(h.get('fontes') or []) or [SEM_FONTES]
 
 
 # ------------------------------------------------------------------ teste embutido
@@ -224,7 +231,12 @@ def _autoteste():
     marcadas = [s['rotulo'] for s in h['safras'] if s['abaixo']]
     assert marcadas == ['2022/23'], marcadas
     q = quadro_md(h, 'Fazenda Exemplo')
-    assert '## Sede' in q and '▼' in q and 'Copernicus Sentinel-2 L2A' in q and 'produtividade' in q
+    assert '## Sede' in q and '▼' in q and 'produtividade' in q
+    # as fontes saem como vieram nas respostas (as do exemplo dizem que o dado é inventado), com os anos juntos
+    assert h['fontes'] == sintetico.FONTES_ESPERADAS, h['fontes']
+    assert all(f'- {f}' in q for f in h['fontes']) and 'pluviômetros e satélites' not in q
+    sem = montar([dict(s, fontes=[]) for s in safras])
+    assert sem['fontes'] == [] and f'- {SEM_FONTES}' in quadro_md(sem)
     # janelas não emendadas: avisa
     so_duas = [safras[0], safras[2]]
     assert 'não estão emendadas' in montar(so_duas)['avisos'][0]

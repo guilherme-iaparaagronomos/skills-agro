@@ -45,17 +45,22 @@ Skills; em outras IAs compatíveis, a pasta de skills do projeto).
 
 ## Como foi testada
 
-- O roteiro foi seguido uma vez com as ferramentas de verdade, num talhão de
+- O roteiro foi seguido uma vez com as ferramentas de verdade, em um talhão de
   19 ha, para um período seco de 2024: a curva com a chuva, a chuva e a
   temperatura dia a dia, a lista de datas e os dois laudos, pedidos por data.
   O teste mostrou três coisas que entraram no roteiro: a lista de datas e o
   laudo aceitam um talhão ou a área inteira, não uma lista de talhões; uma
   data pode estar na lista de datas e faltar na curva; e a contagem de
   veranico do histórico de chuva usa outra régua que a da curva.
-- **O que não foi feito**: usar num sinistro de verdade, com a resposta de
+- **O que não foi feito**: usar em um sinistro de verdade, com a resposta de
   uma seguradora ou de um agente do Proagro; testar em evento de geada,
   granizo ou chuva em excesso; rodar a skill inteira dentro de uma conversa em
   duas IAs diferentes. O exemplo do `quadro.md` é inventado.
+
+- **As fontes dos dados**: desde 18/11/2026 as ferramentas fecham cada
+  resposta com o bloco "FONTES DOS DADOS", e o roteiro passou a copiar as
+  fontes dali. O formato do bloco foi conferido em respostas reais; o
+  roteiro inteiro não foi seguido de novo depois dessa mudança.
 
 ## Avisos
 

@@ -112,7 +112,7 @@ def montar_janela(texto, seco_mm, veranico_dias, cortes, regra_inicio=None, salt
     ref = janelas[-1]
     n = len(ref['mm'])
     if max(veranico_dias) > n:
-        raise Recusa(f'--veranico-dias: {max(veranico_dias)} dias não cabem numa janela de {n} dias.')
+        raise Recusa(f'--veranico-dias: {max(veranico_dias)} dias não cabem em uma janela de {n} dias.')
     inicio = None
     if regra_inicio:
         g = dict(regra_inicio, seco_mm=seco_mm)
@@ -135,7 +135,7 @@ def montar_fim(texto, seco_mm, fim_dias, salteados=False):
     janelas, notas, anos, _ = _conjunto(texto, salteados)
     ref = janelas[-1]
     if fim_dias >= len(ref['mm']):
-        raise Recusa(f'--fim-dias: {fim_dias} dias não cabem numa janela de {len(ref["mm"])} dias.')
+        raise Recusa(f'--fim-dias: {fim_dias} dias não cabem em uma janela de {len(ref["mm"])} dias.')
     datas = J.datas_por_ano(janelas, lambda j: J.fim_das_aguas(j, seco_mm, fim_dias))
     return dict(local=ref['local'], janelas=janelas, anos=anos, inicio_dm=dm(ref['inicio']), fim_dm=dm(ref['fim']),
                 datas=datas, regra=dict(seco_mm=seco_mm, fim_dias=fim_dias), notas=notas)
@@ -211,6 +211,11 @@ def conferir(a):
         print()
     if not (a.mensal or a.janela or a.janela_fim):
         raise Recusa('Informe --mensal, --janela ou --janela-fim para conferir.')
+    partes = fontes_dos_arquivos(a, usa_temperatura=True)
+    for nome, linhas in partes:
+        for l in linhas:
+            print(f'FONTE ({nome}): {l}')
+    avisar_sem_fontes(partes)
     print(USUAIS)
     print('Nada foi calculado. Mostre isto ao usuário, confirme as escolhas e rode de novo sem --conferir.')
 
@@ -266,7 +271,34 @@ def calcular(a):
     r['duracao'] = duracao_das_aguas(r)
     if a.contexto:
         r['contexto'] = ler_contexto(_ler(a.contexto))
+    r['fontes'] = fontes_dos_arquivos(a, bool(r.get('mensal') and r['mensal'].get('gdd')))
     return r
+
+
+PARTES = (('tabela mensal', 'mensal'), ('janela dia a dia', 'janela'), ('janela do fim das águas', 'janela_fim'),
+          ('ano em curso', 'contexto'))
+
+
+def fontes_dos_arquivos(a, usa_temperatura=False):
+    """[(parte, [linhas de fonte])]: o que a ferramenta escreveu no bloco "FONTES DOS DADOS" de cada arquivo, como
+    veio. A linha da temperatura só entra na tabela mensal, e só quando os graus-dia foram calculados: é o único
+    dado de temperatura que o relato usa."""
+    partes = []
+    for nome, campo in PARTES:
+        caminho = getattr(a, campo, None)
+        if not caminho:
+            continue
+        linhas = [l for l in L.fontes_do_texto(_ler(caminho))
+                  if not l.lower().startswith('temperatura') or (usa_temperatura and campo == 'mensal')]
+        partes.append((nome, linhas))
+    return partes
+
+
+def avisar_sem_fontes(partes):
+    faltam = [nome for nome, linhas in partes if not linhas]
+    if faltam:
+        print('ATENÇÃO: sem o bloco "FONTES DOS DADOS" do fim da resposta da ferramenta em: ' + ', '.join(faltam)
+              + '. Cole o bloco no arquivo, como veio, para o relato citar a fonte de cada dado.')
 
 
 def entregar(r, pasta):
@@ -274,6 +306,7 @@ def entregar(r, pasta):
     import saidas
     arquivos = saidas.gravar_tudo(pasta, r)
     print(relato.em_texto(r))
+    avisar_sem_fontes(r.get('fontes') or [])
     print(f'Arquivos em {os.path.abspath(pasta)}: ' + ', '.join(arquivos))
 
 

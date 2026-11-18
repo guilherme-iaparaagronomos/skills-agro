@@ -4,7 +4,7 @@ O script não chama ferramenta nenhuma. Ele lê arquivos de texto com o que a
 `clima_historico` e a `contexto_chuva` devolveram. Quem grava esses arquivos é
 a IA, a partir das respostas das ferramentas.
 
-Se o ambiente guarda a resposta da ferramenta num arquivo, passe o arquivo
+Se o ambiente guarda a resposta da ferramenta em um arquivo, passe o arquivo
 como veio: o script entende o texto original. Se não guarda, transcreva do
 jeito resumido abaixo, que é mais curto e é conferido do mesmo jeito.
 
@@ -14,6 +14,10 @@ Regras gerais:
   ponto de milhar (`1.621,5`). Número com ponto e três casas sem vírgula
   (`1.234`) é recusado, porque não dá para saber se é mil ou um vírgula dois.
 - Linha que começa com `#` é comentário.
+- No fim de cada arquivo, cole o bloco `FONTES DOS DADOS` com que a ferramenta
+  fecha a resposta, como veio (a linha do título e as linhas que começam com
+  `- `). Em arquivo com vários anos, um bloco no fim basta quando é igual em
+  todos. Sem ele, o relato sai dizendo que as fontes não foram informadas.
 - Os exemplos abaixo têm números inventados.
 
 ## 1. Tabela mensal (`--mensal`)
@@ -62,7 +66,7 @@ normal: 262,3 215,9 251,4 117,4 33,4 17,4 8,6 20,3 52,2 148,2 273,6 270,9
 
 O que o script confere: meses contínuos e sem repetição; soma dos meses contra
 o `total`; soma dos graus-dia contra o `gdd_total`; período contra o primeiro
-e o último mês. Mês cortado numa ponta do período fica fora das contas.
+e o último mês. Mês cortado em uma ponta do período fica fora das contas.
 
 ## 2. Janela dia a dia (`--janela` e `--janela-fim`)
 

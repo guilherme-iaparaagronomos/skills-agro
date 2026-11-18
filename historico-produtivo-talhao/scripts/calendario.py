@@ -66,7 +66,18 @@ def mostrar_leitura(safras):
     if len(grupos) > 1:
         print(f'  as janelas formam {len(grupos)} trechos separados: ' +
               '; '.join(f'{g[0]["inicio"]:%d/%m/%Y} a {g[-1]["fim"]:%d/%m/%Y}' for g in grupos))
+    mostrar_fontes(L.fontes_de(safras))
     print('Compare a primeira e a última imagem de cada linha com a resposta da ferramenta. Se bater, rode sem --conferir.')
+
+
+def mostrar_fontes(fontes):
+    if fontes:
+        print('  fontes dos dados lidas das respostas (vão para o quadro como estão):')
+        for f in fontes:
+            print(f'    - {f}')
+    else:
+        print('  ATENÇÃO: as respostas coladas não trazem o bloco "FONTES DOS DADOS" do fim da resposta de cada '
+              'ferramenta. Cole o bloco no fim de cada arquivo, como veio, para o quadro citar a fonte de cada dado.')
 
 
 def principal(lista=None):
@@ -124,6 +135,7 @@ def principal(lista=None):
             print(f'    {aviso}')
     for aviso in h['avisos']:
         print(f'  aviso: {aviso}')
+    mostrar_fontes(h['fontes'])
     print(f'Gravado em {saida}: ' + ', '.join(gravados))
     print('O quadro.md é o texto para colar na conversa. Só descreve: índice de vegetação não é produtividade.')
     return 0

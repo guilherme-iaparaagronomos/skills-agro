@@ -3,7 +3,7 @@
 Dois tipos de arquivo, os dois em texto simples:
 
 1. Tabela mensal (uma chamada longa da `clima_historico`, escala `mes`). Cada
-   mês numa linha, como a ferramenta devolveu
+   mês em uma linha, como a ferramenta devolveu
        1998-10: 180,4 mm (média 148,2 mm → +22%) · temp média 20.2–29.4°C · graus-dia 458.7
    ou resumido em `1998-10 180,4 458.7` (mês, chuva e, se quiser, graus-dia).
    No alto, as linhas RESUMO e TEMPERATURA da ferramenta, ou `total:`,
@@ -88,6 +88,43 @@ def tolerancia(n):
 
 def _linhas(texto):
     return [l.strip() for l in str(texto).replace('\r\n', '\n').split('\n')]
+
+
+RE_BLOCO_DE_FONTES = re.compile(r'^FONTES DOS DADOS\b')       # o bloco com que a ferramenta fecha a resposta
+RE_FONTE_SOLTA = re.compile(r'^Fontes?:\s*(.+)$', re.I)       # a linha "Fonte: ..." avulsa
+RE_ANO_DA_FONTE = re.compile(r'\((\d{4})\)')
+RE_INSTRUCAO = re.compile(r'\s+(?:NÃO|NUNCA|SEMPRE)\b')
+
+
+def fontes_do_texto(texto):
+    """As linhas de fonte que a ferramenta escreveu no texto (o bloco "FONTES DOS DADOS" do fim de cada resposta, ou
+    uma linha "Fonte: ..."), inteiras e sem repetir. Linhas que só mudam no ano entre parênteses viram uma só."""
+    achadas, em_bloco = [], False
+    for l in _linhas(texto):
+        if RE_BLOCO_DE_FONTES.match(l):
+            em_bloco = True
+            continue
+        item = None
+        if em_bloco and l[:2] in ('- ', '• '):
+            item = l[2:]
+        else:
+            em_bloco = False
+            m = RE_FONTE_SOLTA.match(l)
+            # na linha avulsa, o que vem depois da fonte em maiúsculas ("NÃO nomeie...") é instrução para a IA, não fonte
+            item = RE_INSTRUCAO.split(m.group(1))[0] if m else None
+        item = ' '.join(item.split()) if item else ''
+        if item:
+            achadas.append(item)
+    anos, ordem = {}, []
+    for linha in achadas:
+        marcas = RE_ANO_DA_FONTE.findall(linha)
+        chave = RE_ANO_DA_FONTE.sub('(@)', linha) if len(marcas) == 1 else linha
+        if chave not in anos:
+            anos[chave] = set()
+            ordem.append(chave)
+        if len(marcas) == 1:
+            anos[chave].add(marcas[0])
+    return [c.replace('(@)', '(' + ', '.join(sorted(anos[c])) + ')') if anos[c] else c for c in ordem]
 
 
 RE_PERIODO = re.compile(r'(\d{2}/\d{2}/\d{4})\s+a\s+(\d{2}/\d{2}/\d{4})(?:,\s*(\d+)\s*dias?)?')
@@ -343,7 +380,7 @@ def conferir_janela(j):
                              'Os dias precisam estar todos, na ordem.')
     mm = j['mm']
     if any(v is not None and (v < 0 or v > 700) for v in mm):
-        raise Recusa(f'{quem}: há chuva negativa ou acima de 700 mm num dia. Confira a transcrição.')
+        raise Recusa(f'{quem}: há chuva negativa ou acima de 700 mm em um dia. Confira a transcrição.')
     notas = []
     sem = sum(1 for v in mm if v is None)
     if sem != j['sem_dado_informado'] and (sem or j['sem_dado_informado']):
@@ -483,6 +520,20 @@ def _autoteste():
     assert j1['mm'] == j2['mm'] == [float(v) for v in mm] and j1['total'] == 60.6 and j1['dias_chuva'] == 6
     assert j1['veranico'] == dict(dias=10, de=dt.date(2024, 10, 5), ate=dt.date(2024, 10, 14))
     assert conferir_janela(j1) == [] and conferir_janela(j2) == [] and rotulo(j1) == '2024'
+
+    # as fontes: o bloco com que a ferramenta fecha cada resposta é lido inteiro e não atrapalha a leitura dos dados
+    bloco = ('\n\nFONTES DOS DADOS (cite no fim da resposta a fonte de cada dado que você usar, como está):\n'
+             '- Chuva: instituto de exemplo A e produto de exemplo B (universidade de exemplo).\n'
+             '- Temperatura: modelo de exemplo C; informação de exemplo ({ano}).\n')
+    assert fontes_do_texto(resumido) == [] and fontes_do_texto('Fonte: registro de exemplo.') == ['registro de exemplo.']
+    assert fontes_do_texto('Fonte: registro de exemplo (casa X). NÃO nomeie nada ao responder.') == ['registro de exemplo (casa X).']
+    dois_anos = dias + bloco.format(ano=2025) + '\n' + dias.replace('2024', '2023') + bloco.format(ano=2026)
+    assert fontes_do_texto(dois_anos) == ['Chuva: instituto de exemplo A e produto de exemplo B (universidade de exemplo).',
+                                          'Temperatura: modelo de exemplo C; informação de exemplo (2025, 2026).']
+    lidas = ler_janelas(dois_anos)
+    assert len(lidas) == 2 and all(j['mm'] == [float(v) for v in mm] and conferir_janela(j) == [] for j in lidas)
+    com_bloco = ler_mensal('\n'.join(cru) + bloco.format(ano=2026))
+    assert com_bloco['meses'] == a['meses'] and com_bloco['avisos'] == a['avisos'] and conferir_mensal(com_bloco)[0] == meses
 
     def estragado(troca, pista):
         try:

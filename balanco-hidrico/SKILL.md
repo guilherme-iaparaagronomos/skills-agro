@@ -28,7 +28,7 @@ Calcula o balanço hídrico climatológico pelo método de Thornthwaite e Mather
 
 ## Para que serve
 - Descrever a disponibilidade de água de um lugar no ano normal.
-- Acompanhar o que aconteceu numa safra: quando faltou e quando sobrou água,
+- Acompanhar o que aconteceu em uma safra: quando faltou e quando sobrou água,
   para a CAD informada.
 
 ## Para que NÃO serve
@@ -57,7 +57,7 @@ Calcula o balanço hídrico climatológico pelo método de Thornthwaite e Mather
   use a do centro da área: 1 grau de erro muda a ETP do ano em até 1% (e a
   de um mês em até 3,5%, com Hargreaves no sul do país).
 
-## Antes de buscar os dados: as perguntas (numa mensagem só)
+## Antes de buscar os dados: as perguntas (em uma mensagem só)
 1. **O lugar**: fazenda salva (`listar_fazendas` mostra os nomes), perímetro,
    ponto por latitude e longitude, ou a tabela da estação dele.
 2. **Qual balanço**: o do ano normal, o de uma safra, ou os dois.
@@ -88,9 +88,10 @@ mesmo.
      `longitude`).
    - Safra: `clima_historico` com `escala` = `dia` e as datas da safra.
    - Estação do usuário: pule para o passo 2 com o arquivo dele.
-2. **Grave a resposta num arquivo de texto**, um para a tabela mensal e outro
-   para a diária. O formato está na seção "Como transcrever". Não resuma, não
-   arredonde e não pule linha.
+2. **Grave a resposta em um arquivo de texto**, um para a tabela mensal e
+   outro para a diária. O formato está na seção "Como transcrever". Não
+   resuma, não arredonde e não pule linha. O bloco "FONTES DOS DADOS" do fim
+   da resposta vai junto: é dele que o relatório tira a fonte de cada dado.
 3. **Rode o diagnóstico** (não calcula o balanço):
    ```
    python scripts/balanco.py --diagnostico --mensal mensal.txt --diario diario.txt --saida saida
@@ -117,7 +118,10 @@ mesmo.
        --etp <método> --arm-inicial <cad|normal|mm> [--chuva <referencia|periodo>] --nome "<lugar>" \
        --fonte conector --saida saida
    ```
-   Com dado de estação, `--fonte "<nome da estação>"`. No sequencial, a
+   Com `--fonte conector`, o relatório cita as fontes que a ferramenta
+   escreveu no bloco "FONTES DOS DADOS" dos arquivos; se o bloco não foi
+   colado, o script avisa e você corrige o arquivo antes de entregar. Com
+   dado de estação, `--fonte "<nome da estação>"`. No sequencial, a
    tabela mensal só é necessária para Thornthwaite (índice de calor) e para
    `--arm-inicial normal`, que também pede `--chuva`. Uma sequência de anos
    por mês sai direto da tabela mensal, sem a diária: `--sequencial --mensal
@@ -137,8 +141,9 @@ Para ver a skill funcionando sem dado nenhum: `python scripts/balanco.py --demo`
 
 Dois jeitos, que o script lê igual:
 
-- **Colar o texto como veio**, do título `Chuva — ...` até a última linha de
-  dado. O script tira sozinho o período, o total e os avisos.
+- **Colar o texto como veio**, do título `Chuva — ...` até o fim do bloco
+  "FONTES DOS DADOS". O script tira sozinho o período, o total, os avisos e
+  as fontes.
 - **Formato compacto**, mais curto: uma linha por dia ou por mês, com as
   linhas de controle em cima.
 
@@ -148,6 +153,7 @@ periodo: 01/07/2024 a 30/06/2025
 total: 1.518,2
 temperatura: 10 40
 avisos: 15 dia(s): o pluviômetro de referência mais próximo somou bem menos...
+fonte: [uma linha do bloco "FONTES DOS DADOS", copiada como veio]
 2024-07-01 0,0 17 30
 2024-07-02 0,0 17 31
 ```
@@ -160,6 +166,7 @@ avisos: 15 dia(s): o pluviômetro de referência mais próximo somou bem menos..
 | `temperatura:` | só na escala de dia: `mín` e `máx` da linha `TEMPERATURA` |
 | `normal:` | só na escala de mês: os 12 valores de `média` de um ano inteiro, de janeiro a dezembro |
 | `avisos:` | a linha `AVISOS`, inteira; uma linha `avisos:` para cada aviso |
+| `fonte:` | cada linha do bloco `FONTES DOS DADOS`, inteira e como veio; uma linha `fonte:` para cada uma |
 | dia | `AAAA-MM-DD chuva mínima máxima` (a faixa `temp 17–30°C` vira `17 30`) |
 | mês | `AAAA-MM chuva mínima máxima` (a faixa `temp média 20.5–28.5°C` vira `20.5 28.5`) |
 
@@ -169,7 +176,7 @@ Umidade, vento e graus-dia não entram.
 
 O script confere: nenhum dia ou mês faltando ou repetido; o período; **a soma
 da chuva contra o total da ferramenta**; e a menor mínima e a maior máxima.
-Erro pequeno, menor que a folga de arredondamento (perto de 2 mm num ano de
+Erro pequeno, menor que a folga de arredondamento (perto de 2 mm em um ano de
 dias), ou dois erros que se compensam, passam: transcreva com calma.
 
 ## As escolhas do usuário
@@ -224,7 +231,7 @@ relatório diz até que período o resultado depende dessa escolha.
 | `--de`, `--ate` | recorta o sequencial | a tabela inteira |
 | `--sem-dado zero` | conta como zero os dias sem dado de chuva | recusa |
 | `--latitude` | graus decimais, sul negativo | a da linha `local:`, quando é ponto |
-| `--nome`, `--fonte` | título do relatório e origem dos dados (`conector` ou o nome da estação) | — |
+| `--nome`, `--fonte` | título do relatório e origem dos dados: `conector` (cita as fontes do bloco "FONTES DOS DADOS" dos arquivos) ou o nome da estação | — |
 
 Decêndios: dias 1 a 10, 11 a 20 e 21 ao fim do mês. Só entram decêndios
 inteiros; os dias que sobram nas pontas ficam de fora, e o script diz quantos.
@@ -264,12 +271,17 @@ As fórmulas, as fontes e os limites: `references/metodo.md`.
 - `....json` — todos os números e as escolhas.
 - No diagnóstico: `diagnostico.json`.
 
-## Sigilo das fontes
+## Fontes dos dados
 
-Com dado do conector, a fonte é "pluviômetros e satélites da comunidade
-agrônomo10X (OagronomIA)", como a ferramenta manda (`--fonte conector` escreve
-isso no relatório). Não nomeie produto, instituto ou satélite, e não deduza
-como o dado é processado. Com dado de estação, a fonte é a estação do usuário.
+Com dado do conector, a fonte de cada dado é a que a ferramenta escreve no
+bloco "FONTES DOS DADOS", no fim da resposta: a da chuva, a da média histórica
+e a da temperatura. Cite cada linha inteira e como veio (`--fonte conector`
+faz isso no relatório, a partir dos arquivos). Não troque por um nome
+genérico, não acrescente fonte que a ferramenta não informou e não descreva
+como os dados são combinados nem processados: não cite plataforma, biblioteca,
+nuvem nem modelo. Se o usuário perguntar como é feito, o processamento é das
+ferramentas da comunidade agrônomo10X (OagronomIA) e não é divulgado. Com dado
+de estação, a fonte é a estação do usuário.
 
 ## Dependências
 

@@ -26,7 +26,9 @@ COR = dict(chuva='#4FB7C9', excedente='#4FB7C9', deficiencia='#C26A3D', etp='#C2
 ROTULO_DOC = 'agrônomo10X · Balanço hídrico'
 MONO = 'DejaVu Sans Mono'
 LINHAS_POR_PAGINA = 22
-FONTE_DO_CONECTOR = 'pluviômetros e satélites da comunidade agrônomo10X (OagronomIA)'
+SEM_FONTE_DA_FERRAMENTA = ('ferramentas de clima da comunidade agrônomo10X (OagronomIA); a fonte de cada dado não veio '
+                           'nos arquivos lidos')
+QUADRO_DAS_FONTES = 'Fontes dos dados'
 RESSALVA = ('A CAD e o método de ETP foram escolhidos pelo usuário. O relatório descreve o balanço; a decisão de '
             'manejo é do responsável técnico.')
 
@@ -164,6 +166,20 @@ def _blocos(ax, y, blocos, largura, fonte=6.6, passo=0.026, piso=0.02):
     return []
 
 
+def _fontes_no_painel(ax, y, fontes, largura):
+    """O quadro das fontes dos dados (cada linha como a ferramenta escreveu), a partir de y, se couber até o pé do
+    painel. Devolve True se desenhou."""
+    paragrafos = [textwrap.wrap(f, largura) or [''] for f in fontes]
+    altura = 0.045 + sum(0.023 * len(p) + 0.008 for p in paragrafos) - 0.008
+    if y - altura < -0.01:
+        return False
+    y = _titulo(ax, y, QUADRO_DAS_FONTES) + 0.005
+    for partes in paragrafos:
+        ax.text(0, y, '\n'.join(partes), fontsize=6.4, color=T['fg2'], va='top', linespacing=1.35)
+        y -= 0.023 * len(partes) + 0.008
+    return True
+
+
 def _eixo(ax, titulo=None):
     for lado in ('top', 'right'):
         ax.spines[lado].set_visible(False)
@@ -240,7 +256,7 @@ def armazenamento(ax, r):
 
 
 def figura(caminho, r, titulo):
-    """Os três gráficos numa imagem só, para mostrar na conversa."""
+    """Os três gráficos em uma imagem só, para mostrar na conversa."""
     fig = plt.figure(figsize=(11.69, 4.6), facecolor=T['pagina'])
     fig.text(0.035, 0.945, espacado(titulo), fontsize=7.2, color=T['verde'], fontweight='bold', va='center')
     for caixa, desenho in (([0.055, 0.2, 0.27, 0.6], extrato), ([0.385, 0.2, 0.27, 0.6], chuva_e_etp),
@@ -330,7 +346,10 @@ def relatorio(caminho_pdf, caminho_png, r, meta):
     unidade = 'mm no ano' if normal else 'mm no período'
     kpis = [('Chuva', num(s['p'], 0), unidade), ('ETP', num(s['etp'], 0), unidade),
             ('Deficiência', num(s['def'], 0), unidade), ('Excedente', num(s['exc'], 0), unidade)]
-    rodape = f'comunidade agrônomo10X · gerado em {meta["data"]} · dados: {meta["fonte"]}'
+    fontes = list(meta['fontes'])
+    curta = len(fontes) == 1 and len(fontes[0]) <= 90      # uma fonte curta cabe no rodapé; as outras vão para o quadro
+    rodape = (f'comunidade agrônomo10X · gerado em {meta["data"]} · '
+              + (f'dados: {fontes[0]}' if curta else f'fontes: no quadro "{QUADRO_DAS_FONTES}"'))
     passo_txt = 'por mês' if r['passo'] == 'mes' else 'por decêndio'
     if normal:
         subtitulo = f'Balanço hídrico climatológico normal · CAD {num(r["cad"], 0)} mm · Thornthwaite e Mather (1955)'
@@ -360,11 +379,13 @@ def relatorio(caminho_pdf, caminho_png, r, meta):
             y = _tabela(esq, y, _colunas(normal), parte, passo=0.045 if normal else 0.0365, fonte=7.2 if normal else 6.6,
                         destaque={len(parte) - 1} if ultima else None)
             if normal:
-                _texto(esq, y - 0.03, ['T: temperatura média. P: chuva. ETP: evapotranspiração potencial. Neg.ac: negativo '
-                                       'acumulado. ARM: armazenamento. ALT: alteração do armazenamento. ETR: '
-                                       'evapotranspiração real. DEF: deficiência. EXC: excedente.',
-                                       r['balanco']['partida'][0].upper() + r['balanco']['partida'][1:] + '.'],
-                       118, fonte=6.5, cor='fg3')
+                y = _texto(esq, y - 0.03, ['T: temperatura média. P: chuva. ETP: evapotranspiração potencial. Neg.ac: '
+                                           'negativo acumulado. ARM: armazenamento. ALT: alteração do armazenamento. ETR: '
+                                           'evapotranspiração real. DEF: deficiência. EXC: excedente.',
+                                           r['balanco']['partida'][0].upper() + r['balanco']['partida'][1:] + '.'],
+                           118, fonte=6.5, cor='fg3')
+            if ultima and not curta and not _fontes_no_painel(esq, y - 0.03, fontes, 122):
+                pendentes = list(pendentes) + [(QUADRO_DAS_FONTES, fontes)]      # sem lugar embaixo da tabela: depois dos avisos
             pendentes = _blocos(_painel(fig, [0.665, 0.085, 0.30, 0.755]), 0.985, pendentes, 58)
             pdf.savefig(fig)
             if pagina == 0:
@@ -409,7 +430,7 @@ if __name__ == '__main__':
         open(p('d.txt'), 'w', encoding='utf-8').write(sintetico.arquivo_diario())
         mensal, diario = entrada.ler(p('m.txt')), entrada.ler(p('d.txt'))
         n = caso.normais(mensal, chuva='referencia')
-        meta = {'titulo': sintetico.NOME, 'data': '15/11/2026', 'fonte': 'exemplo inventado', 'avisos': []}
+        meta = {'titulo': sintetico.NOME, 'data': '15/11/2026', 'fontes': ['exemplo inventado'], 'avisos': []}
         casos = [caso.ano_normal(n, 'thornthwaite', sintetico.LATITUDE, 100),
                  caso.ano_normal(n, 'hargreaves', sintetico.LATITUDE, 60),
                  caso.em_sequencia(entrada.periodos_do_diario(diario['registros'])[0], 'decendio', 'thornthwaite-tef',
@@ -424,6 +445,12 @@ if __name__ == '__main__':
             assert os.path.getsize(p(f'r{k}.pdf')) > 20000 and os.path.getsize(p(f'f{k}.png')) > 8000, k
             assert gravar_csv(p(f't{k}.csv'), r) == len(r['linhas']) + 1
             assert 'fecham' in frases_da_afericao(r)[-1]
+        # várias fontes (o bloco da ferramenta): saem no quadro "Fontes dos dados", e o rodapé aponta para ele
+        varias = dict(meta, fontes=['Chuva: instituto de exemplo A e produto de exemplo B (universidade de exemplo).',
+                                    'Média histórica de 1991 a 2020: produto de exemplo B.',
+                                    'Temperatura, umidade e vento: fonte de exemplo C.'])
+        relatorio(p('rf.pdf'), p('rf.png'), casos[0], varias)
+        assert os.path.getsize(p('rf.pdf')) > 20000
         texto = open(p('t0.csv'), encoding='utf-8-sig').read().splitlines()
         assert texto[0].startswith('mes;dias;temperatura_media;chuva;etp') and texto[1].startswith('jan;31;')
         assert texto[-1].startswith('total;365;') and len(texto) == 14

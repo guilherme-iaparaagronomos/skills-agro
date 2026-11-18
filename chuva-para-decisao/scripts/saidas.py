@@ -32,7 +32,7 @@ CHUVA = ['#D9DDD3', '#F4EBD3', '#BFE3B4', '#6DBB5C', '#1F6B14']      # sem dado,
 ROTULO_DOC = 'agrônomo10X · Chuva para decisão'
 MONO = 'DejaVu Sans Mono'
 RODAPE = ('Descrição do registro de chuva, não previsão. A decisão de plantio e de manejo é do responsável técnico. '
-          'Fonte: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).')
+          'As fontes dos dados estão no fim do relatório, como a ferramenta informou.')
 
 
 def espacado(texto):

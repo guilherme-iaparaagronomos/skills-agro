@@ -85,7 +85,7 @@ pelo usuário".
   perímetro, de preferência com os talhões (GeoJSON, KML ou WKT; shapefile,
   converta para GeoJSON sem perder os atributos).
 
-## Antes de chamar: as perguntas (numa mensagem só)
+## Antes de chamar: as perguntas (em uma mensagem só)
 
 1. **A área e os talhões atingidos**: a fazenda salva ou o arquivo; todos os
    talhões ou quais.
@@ -177,7 +177,7 @@ de cada vez ou continuar no dia seguinte.
   não a chame de perda. Ponha também o número de dias entre as duas imagens.
   Use as datas da própria lista. Elas podem não ser as mesmas dos laudos: a
   curva e a lista de datas filtram as imagens de jeitos diferentes, e uma
-  data pode estar numa e faltar na outra. Quando forem outras, escreva as
+  data pode estar em uma e faltar na outra. Quando forem outras, escreva as
   duas: a data do índice e a data do laudo.
 - **Veranicos**: as linhas da lista `VERANICOS` da `curva_com_chuva`, com
   datas, dias e mm, e a régua que a ferramenta escreveu entre parênteses. A
@@ -219,10 +219,13 @@ de cada vez ou continuar no dia seguinte.
 - Não chama de novo para "melhorar" um resultado nem escolhe a imagem que
   favorece o relato.
 
-## Sigilo das fontes
+## Fontes dos dados
 
-Cite as fontes como as ferramentas mandam: o índice e as imagens,
-"Copernicus Sentinel-2 L2A"; a chuva e a temperatura, "pluviômetros e
-satélites da comunidade agrônomo10X (OagronomIA)", sem nomear produto,
-instituto ou satélite. Sobre como o dado é processado, a única frase é:
-processado pelas ferramentas da comunidade agrônomo10X (OagronomIA).
+A fonte de cada dado é a que a ferramenta escreve no bloco "FONTES DOS DADOS",
+no fim da resposta: a do índice e das imagens, a da chuva e a da temperatura.
+Na seção de fontes do quadro, copie as linhas dos dados que você usou,
+inteiras e como vieram, sem repetir. Não troque por um nome genérico, não
+acrescente fonte que a ferramenta não informou e não descreva como os dados
+são combinados nem processados: não cite plataforma, biblioteca, nuvem nem
+modelo. Se o usuário perguntar como é feito, o processamento é das ferramentas
+da comunidade agrônomo10X (OagronomIA) e não é divulgado.

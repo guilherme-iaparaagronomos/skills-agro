@@ -3,7 +3,7 @@
 ## 1. O que a skill calcula
 
 O balanço hídrico climatológico de Thornthwaite e Mather (1955): a
-contabilidade da água num solo de capacidade CAD, que recebe a chuva (P) e
+contabilidade da água em um solo de capacidade CAD, que recebe a chuva (P) e
 perde a evapotranspiração. Duas contas:
 
 - **ano normal**: 12 meses com a chuva e a temperatura normais do lugar. É
@@ -186,7 +186,7 @@ compensam; troca de temperatura que não mexe nos extremos do período.
 - Trocar a declinação da FAO 56 pela de Cooper (1969) muda a ETP anual de
   Hargreaves em 0,01%.
 
-**Com o conector.** Duas consultas a `clima_historico` num ponto do sudoeste
+**Com o conector.** Duas consultas a `clima_historico` em um ponto do sudoeste
 de Goiás: 27 anos por mês (324 linhas) e uma safra por dia (365 linhas),
 transcritas à mão para o formato compacto. A soma das linhas ficou a 0,3 mm e
 a 0,4 mm do total da ferramenta, e a média anual calculada (1.622,1 mm) bateu
@@ -207,7 +207,7 @@ dado que o método não aceita).
 - O sequencial por decêndio não foi comparado com tabela publicada; foi
   refeito à parte e conferido pelas identidades.
 - A transcrição foi feita uma vez, por uma IA. Não foi usada por um membro
-  numa conversa de verdade.
+  em uma conversa de verdade.
 - Dado de estação: só arquivos montados para o teste.
 - Latitude norte: as equações valem, e não houve teste com dado de lá.
 

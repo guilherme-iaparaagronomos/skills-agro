@@ -292,7 +292,7 @@ def relatorio(caminho_pdf, h, nome=None, caminho_png=None):
     kpis = [('Safras', str(len(h['safras'])), 'consultadas'), ('Áreas', str(len(h['talhoes'])), 'talhões'),
             ('Ciclos', str(n_ciclos), 'encontrados')]
     nomes = list(h['talhoes'])
-    total = 1 + len(nomes) + max(0, (len(nomes) - 1) // 12)
+    total = 2 + len(nomes) + max(0, (len(nomes) - 1) // 12)      # resumo, uma por talhão e a das fontes
     pagina = 0
 
     def rodape():
@@ -365,6 +365,13 @@ def relatorio(caminho_pdf, h, nome=None, caminho_png=None):
             _texto(ax, y - 0.03, notas, 100, fonte=6.1, cor='fg3', passo=0.036, piso=0.0)
             pdf.savefig(fig, facecolor=T['pagina'])
             plt.close(fig)
+        # ---- as fontes dos dados, como as ferramentas escreveram nas respostas
+        fig = _pagina(titulo, subtitulo, kpis, rodape())
+        ax = _painel(fig, [0.035, 0.085, 0.93, 0.755])
+        y = _titulo(ax, 1.0, 'Fontes dos dados')
+        _texto(ax, y, H.linhas_das_fontes(h), 165, fonte=7.4, cor='fg1', passo=0.03)
+        pdf.savefig(fig, facecolor=T['pagina'])
+        plt.close(fig)
     return pagina
 
 
@@ -406,13 +413,13 @@ def _autoteste():
         gravar_quadro(pasta / 'quadro.md', h, 'Fazenda Exemplo')
         figura_do_talhao(pasta / 'sede.png', h, 'Sede')
         paginas = relatorio(pasta / 'historico.pdf', h, 'Fazenda Exemplo', pasta / 'historico.png')
-        assert paginas == 4, paginas
+        assert paginas == 5, paginas          # o resumo, as três áreas e a página das fontes
         cab = (pasta / 'ciclos.csv').read_text(encoding='utf-8-sig').splitlines()
         assert cab[0].startswith('talhao;safra;ciclo;inicio_provavel') and cab[1].startswith('Sede;2021/22;1;')
         for arq in ('historico.pdf', 'historico.png', 'sede.png', 'quadro.md', 'safras.csv'):
             assert (pasta / arq).stat().st_size > 1000, arq
     assert nome_de_arquivo('Pivô 1 / Área nova') == 'pivo-1-area-nova'
-    print('saidas.py: autoteste ok (2 CSV, quadro, figura e PDF de 4 páginas)')
+    print('saidas.py: autoteste ok (2 CSV, quadro, figura e PDF de 5 páginas, a última com as fontes)')
 
 
 if __name__ == '__main__':

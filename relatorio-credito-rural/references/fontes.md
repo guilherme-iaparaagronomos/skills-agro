@@ -83,6 +83,9 @@ instituição; o que significa para a lavoura, do responsável técnico.
 ## Como citar
 
 - Dossiê: as fontes como estão na última página do PDF.
-- Índice: Copernicus Sentinel-2 L2A.
-- Chuva: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).
-- Processamento: ferramentas da comunidade agrônomo10X (OagronomIA).
+- Índice e chuva das safras: as linhas do bloco "FONTES DOS DADOS" com que a
+  `curva_com_chuva` fecha a resposta, inteiras e como vieram.
+- Chuva dos últimos anos: as linhas "Chuva" e "Média histórica" do bloco
+  "FONTES DOS DADOS" da `clima_historico`.
+- Não troque por nome genérico, não acrescente fonte que a ferramenta não
+  informou e não descreva como os dados são combinados nem processados.

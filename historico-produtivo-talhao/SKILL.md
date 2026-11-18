@@ -64,7 +64,7 @@ dos ciclos.
 - **Ambiente que roda Python**, com numpy e matplotlib, para o script. Sem
   ele, veja "Sem ambiente de código".
 
-## Antes de chamar: as perguntas (numa mensagem só)
+## Antes de chamar: as perguntas (em uma mensagem só)
 
 1. **A área e os talhões**: a fazenda salva ou o arquivo. Todos os talhões ou
    quais? Sem talhões no arquivo, o histórico é da área inteira, que pode
@@ -105,7 +105,7 @@ safras, menos talhões ou continuar no dia seguinte.
 3. **Uma chamada de `clima_historico` por safra**, na mesma área e com as
    mesmas datas, `escala`: `mes`. Dela interessa a linha `RESUMO`, que traz a
    chuva e a média histórica (1991–2020) do período.
-4. **Grave um arquivo de texto por safra** numa pasta (`respostas/`), com,
+4. **Grave um arquivo de texto por safra** em uma pasta (`respostas/`), com,
    nesta ordem e como vieram:
    - a primeira linha da resposta da `curva_com_chuva` (a que tem "cruzado
      com a chuva de ... a ...");
@@ -114,7 +114,9 @@ safras, menos talhões ou continuar no dia seguinte.
      cortadas depois de "no total)";
    - as linhas da curva: `Área: ...` ou uma `Talhão ...: ...` por talhão,
      **inteiras**, sem resumir e sem redigitar número de memória;
-   - a linha `RESUMO:` da `clima_historico`.
+   - a linha `RESUMO:` da `clima_historico`;
+   - o bloco `FONTES DOS DADOS` do fim de cada uma das duas respostas, como
+     veio: é dele que o quadro tira a fonte de cada dado.
 5. **Confira a cópia**:
    `python scripts/calendario.py --pasta respostas --conferir`.
    Ele mostra, por safra e talhão, quantas imagens leu e a primeira e a
@@ -169,10 +171,14 @@ que rode Python, e não estime essas datas de cabeça.
 - Não dá parecer de crédito, de seguro ou de arrendamento. Para o quadro de
   crédito existe a skill `relatorio-credito-rural`.
 
-## Sigilo das fontes
+## Fontes dos dados
 
-Cite as fontes como as ferramentas mandam: o índice, "Copernicus Sentinel-2
-L2A"; a chuva, "pluviômetros e satélites da comunidade agrônomo10X
-(OagronomIA)", sem nomear produto, instituto ou satélite. Sobre como o dado é
-processado, a única frase é: processado pelas ferramentas da comunidade
-agrônomo10X (OagronomIA).
+A fonte de cada dado é a que a ferramenta escreve no bloco "FONTES DOS DADOS",
+no fim da resposta: a do índice, a da chuva e a da média histórica. O script
+lê essas linhas dos arquivos e as põe na seção "Fontes" do quadro e na última
+página do PDF, inteiras e como vieram; se o bloco não foi colado, ele avisa e
+você corrige o arquivo antes de entregar. Não troque por um nome genérico, não
+acrescente fonte que a ferramenta não informou e não descreva como os dados
+são combinados nem processados: não cite plataforma, biblioteca, nuvem nem
+modelo. Se o usuário perguntar como é feito, o processamento é das ferramentas
+da comunidade agrônomo10X (OagronomIA) e não é divulgado.

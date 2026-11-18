@@ -74,7 +74,7 @@ instituição; quem responde pela área é o responsável técnico.
   (`listar_fazendas` mostra os nomes).
 - Só áreas no Brasil.
 
-## Antes de chamar: as perguntas (numa mensagem só)
+## Antes de chamar: as perguntas (em uma mensagem só)
 
 1. **O imóvel**: CAR, arquivo ou fazenda salva, e o nome da propriedade para
    o título do dossiê.
@@ -128,7 +128,7 @@ lavoura ou continuar no dia seguinte. Não insista na mesma chamada.
 3. **Safra em andamento** (opcional): se o usuário quiser a safra que está no
    campo, chame do mesmo jeito. A ferramenta corta o período no último dia
    com dado e avisa que os dias mais recentes ainda podem ser revisados. Ela
-   entra no quadro numa linha à parte, marcada "em andamento".
+   entra no quadro em uma linha à parte, marcada "em andamento".
 4. **Chuva dos últimos anos.** Chame `clima_historico` com `escala` = `ano`
    para os dez últimos anos completos (de 1º de janeiro do primeiro a 31 de
    dezembro do último), na mesma área das curvas.
@@ -183,7 +183,7 @@ Regras da leitura:
   nativa e quanto é pastagem.
 - Safra que a ferramenta recusou ou que voltou sem imagem: a linha fica, com
   "não consultada" ou "sem imagem no período" e o motivo que ela deu.
-- Se o ambiente desenha gráficos, você pode sobrepor as curvas das safras num
+- Se o ambiente desenha gráficos, você pode sobrepor as curvas das safras em um
   gráfico só (dias desde o início da janela no eixo horizontal), usando
   apenas os números da lista `CURVA`. É figura de apoio: os gráficos da
   ferramenta continuam sendo os anexos.
@@ -213,13 +213,15 @@ Fale em mm por ano. Não some os anos e não conte "anos ruins".
 - Não substitui vistoria, laudo técnico, análise de solo nem a análise do
   banco ou do órgão ambiental.
 
-## Sigilo das fontes
+## Fontes dos dados
 
-Cite as fontes exatamente como cada ferramenta manda: as do dossiê, como
-estão na última página do PDF; o índice, "Copernicus Sentinel-2 L2A"; a
-chuva, "pluviômetros e satélites da comunidade agrônomo10X (OagronomIA)", sem
-nomear produto, instituto, índice ou satélite. Sobre como o dado é
-processado, a única frase é: processado pelas ferramentas da comunidade
-agrônomo10X (OagronomIA). Não deduza nem cite plataforma, biblioteca ou nuvem.
+Cite as fontes exatamente como cada ferramenta escreve: as do dossiê, como
+estão na última página do PDF; as do índice, da chuva e da média histórica,
+como vêm no bloco "FONTES DOS DADOS" do fim de cada resposta, com as linhas
+inteiras. Não troque por um nome genérico, não acrescente fonte que a
+ferramenta não informou e não descreva como os dados são combinados nem
+processados: não cite plataforma, biblioteca, nuvem nem modelo. Se o usuário
+perguntar como é feito, o processamento é das ferramentas da comunidade
+agrônomo10X (OagronomIA) e não é divulgado.
 
 O que é cada fonte e até onde ela vai: `references/fontes.md`.

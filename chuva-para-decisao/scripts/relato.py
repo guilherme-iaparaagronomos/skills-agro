@@ -10,7 +10,9 @@ from leitura import MESES, br, dm, dma
 
 MES_EXTENSO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro',
                'novembro', 'dezembro']
-FONTE = 'Fonte: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).'
+TITULO_DAS_FONTES = 'Fontes dos dados (como a ferramenta informou)'
+SEM_FONTES = ('Não informadas nos arquivos lidos: as respostas coladas não trazem o bloco "FONTES DOS DADOS" com que a '
+              'ferramenta fecha cada resposta.')
 NAO_E_PREVISAO = ('Descrição do que foi registrado, não previsão: não diz quanto vai chover nem que o ano será igual '
                   'a outro. A decisão de plantio e de manejo é do responsável técnico.')
 
@@ -41,7 +43,7 @@ def regra_fim(g):
 
 
 def aviso_amostra(n):
-    return (f'São {n} anos. Evento que acontece uma vez a cada 10 ou 20 anos pode não aparecer numa amostra desse '
+    return (f'São {n} anos. Evento que acontece uma vez a cada 10 ou 20 anos pode não aparecer em uma amostra desse '
             f'tamanho, e "em 0 de {n} anos" não quer dizer que não acontece.')
 
 
@@ -220,9 +222,23 @@ def blocos(r, para_pdf=False):
     for parte in ('mensal', 'janela', 'fim'):
         if r.get(parte):
             avisos += r[parte]['notas']
-    avisos += [NAO_E_PREVISAO, FONTE]
+    avisos += [NAO_E_PREVISAO]
     saida.append(('Avisos', avisos))
+    saida.append((TITULO_DAS_FONTES, fontes(r)))
     return saida
+
+
+def fontes(r):
+    """As fontes como a ferramenta escreveu em cada arquivo lido. A linha que não vale para todas as partes sai com
+    as partes entre colchetes na frente; sem nenhuma linha, a frase que diz que faltaram."""
+    partes = [(nome, linhas) for nome, linhas in (r.get('fontes') or []) if linhas]
+    if not partes:
+        return [SEM_FONTES]
+    onde = {}
+    for nome, linhas in partes:
+        for l in linhas:
+            onde.setdefault(l, []).append(nome)
+    return [l if len(nomes) == len(partes) else f'[{", ".join(nomes)}] {l}' for l, nomes in onde.items()]
 
 
 def em_texto(r):
@@ -281,17 +297,28 @@ def _autoteste():
                                                 acumulado=[dict(ate=d(2025, 4, 30), anos=6)],
                                                 outros={'não terminaram na janela': ['2019']})))
     r = dict(local='Ponto de teste', mensal=mensal, janela=janela, fim=fim, contexto=['Frase da ferramenta.'],
-             duracao=[dict(rotulo='2020/21', dias=192)])
+             duracao=[dict(rotulo='2020/21', dias=192)],
+             fontes=[('tabela mensal', ['Chuva: instituto A e produto B.', 'Média histórica: produto B.']),
+                     ('janela dia a dia', ['Chuva: instituto A e produto B.', 'Média histórica: produto B.']),
+                     ('janela do fim das águas', []),
+                     ('ano em curso', ['Chuva: instituto A.', 'Fase do oceano: índice de exemplo.'])])
+    assert fontes(r) == ['[tabela mensal, janela dia a dia] Chuva: instituto A e produto B.',
+                         '[tabela mensal, janela dia a dia] Média histórica: produto B.',
+                         '[ano em curso] Chuva: instituto A.', '[ano em curso] Fase do oceano: índice de exemplo.'], fontes(r)
+    assert fontes(dict(fontes=[('tabela mensal', ['Chuva: X.']), ('janela dia a dia', ['Chuva: X.'])])) == ['Chuva: X.']
+    assert fontes({}) == [SEM_FONTES] == fontes(dict(fontes=[('tabela mensal', [])]))
     texto = em_texto(r)
     for pedaco in ('# Chuva para decisão — Ponto de teste', 'novembro, em 2 de 10 anos', 'outubro em 6 de 10 anos',
                    'abril em 9 de 9 anos', 'mediana de 1.500 mm', '92 a 101 dias', 'pelo menos 20 mm em 8 de 10 anos',
                    '7 de 10 anos (2016, 2017)', '15/09 ou antes (2018)', 'até 10/10, em 6 de 10 anos',
                    'Em 2022 a regra fechou perto do fim', '2017 (3)', 'Frase da ferramenta.', 'de 192 a 192 dias',
-                   'réguas diferentes', 'não previsão', 'Fonte: pluviômetros e satélites', 'Em 2024 o veranico máximo',
+                   'réguas diferentes', 'não previsão', '## Fontes dos dados (como a ferramenta informou)',
+                   '- [ano em curso] Chuva: instituto A.', 'Em 2024 o veranico máximo',
                    'Em 2019: não terminaram na janela', '"em 0 de 10 anos" não quer dizer'):
         assert pedaco in texto, pedaco
     assert texto.lower().count('vai chover') == 1          # só na frase que diz que o relato NÃO prevê
-    for proibida in ('recomend', 'ideal', 'melhor', 'pior', 'deve chover', 'risco baixo', 'risco alto', 'deve plantar'):
+    for proibida in ('recomend', 'ideal', 'melhor', 'pior', 'deve chover', 'risco baixo', 'risco alto', 'deve plantar',
+                     'pluviômetros e satélites da comunidade'):
         assert proibida not in texto.lower(), proibida
     mensal['aguas'] = dict(mensal['aguas'], regra_nao_separa=True, ja_no_primeiro=8)
     assert 'não tem estação seca marcada' in em_texto(dict(mensal=mensal))

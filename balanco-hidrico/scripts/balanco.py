@@ -184,10 +184,19 @@ def _das_normais(a, t, chuva):
     return caso.normais(origem, _anos(a.anos), chuva) if origem else None
 
 
-def _fonte(a):
+def _fontes(a, t):
+    """As fontes dos dados, para o relatório citar. Com `--fonte conector`, são as linhas que a ferramenta escreveu no
+    fim da resposta (o bloco "FONTES DOS DADOS"), como vieram nos arquivos; senão, o que o usuário informou."""
     if not a.fonte:
-        return 'fonte não informada'
-    return saidas.FONTE_DO_CONECTOR if entrada.chave(a.fonte) == 'conector' else a.fonte
+        return ['fonte não informada']
+    if entrada.chave(a.fonte) != 'conector':
+        return [a.fonte]
+    lidas = []
+    for tab in (t['mensal'], t['diario'], t['normais']):
+        for f in (tab['meta'].get('fontes', []) if tab else []):
+            if f not in lidas:
+                lidas.append(f)
+    return lidas or [saidas.SEM_FONTE_DA_FERRAMENTA]
 
 
 def _json(obj):
@@ -343,14 +352,20 @@ def _imprimir(r):
 
 def _concluir(a, pasta, r, t, prefixo, aviso_do_exemplo=None):
     titulo = a.nome or ('Balanço hídrico normal' if r['tipo'] == 'normal' else 'Balanço hídrico sequencial')
-    meta = {'titulo': titulo, 'data': datetime.date.today().strftime('%d/%m/%Y'), 'fonte': _fonte(a), 'avisos': t['notas']}
+    meta = {'titulo': titulo, 'data': datetime.date.today().strftime('%d/%m/%Y'), 'fontes': _fontes(a, t), 'avisos': t['notas']}
     if aviso_do_exemplo:
         meta['avisos'] = [aviso_do_exemplo] + meta['avisos']
     print(f'{"BALANÇO HÍDRICO DO ANO NORMAL" if r["tipo"] == "normal" else "BALANÇO HÍDRICO SEQUENCIAL"} · {titulo}\n')
     print('ESCOLHAS E ORIGEM DOS NÚMEROS:')
     for frase in saidas.frases_das_escolhas(r):
         print(f'  - {frase}')
-    print(f'  - Dados: {meta["fonte"]}.')
+    print('\nFONTES DOS DADOS (cite como estão):')
+    for fonte in meta['fontes']:
+        print(f'  - {fonte}')
+    if meta['fontes'] == [saidas.SEM_FONTE_DA_FERRAMENTA]:
+        print('  ATENÇÃO: os arquivos não trazem o bloco "FONTES DOS DADOS" do fim da resposta da ferramenta. Cole o '
+              'bloco no arquivo (ou uma linha "fonte: ..." para cada fonte) e rode de novo, para o relatório citar a '
+              'fonte de cada dado.')
     print('\nTABELA (mm; T em °C):')
     _imprimir(r)
     if r['tipo'] == 'normal':

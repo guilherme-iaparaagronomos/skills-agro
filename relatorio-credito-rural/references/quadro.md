@@ -46,8 +46,9 @@ fonte. Não é parecer, laudo nem recomendação e não conclui sobre o crédito
 - Itens perto do perímetro: [n]. O que são e a distância: no dossiê, seção
   Restrições.
 
-5. SAFRAS POR SATÉLITE  (índice: Copernicus Sentinel-2 L2A; chuva:
-   pluviômetros e satélites da comunidade agrônomo10X (OagronomIA))
+5. SAFRAS POR SATÉLITE
+   Fontes: [as linhas "Índice" e "Chuva" do bloco "FONTES DOS DADOS" da
+   `curva_com_chuva`, inteiras e como vieram]
    Área consultada: [lavoura de X ha | imóvel inteiro de X ha]. Índice: [NDVI].
 
 | Safra | Período | Imagens | Maior intervalo sem imagem | Pico do índice | Chuva | Dias de chuva | Veranicos | Maior veranico |
@@ -61,8 +62,9 @@ fonte. Não é parecer, laudo nem recomendação e não conclui sobre o crédito
    imagem; nas safras com intervalo de 30 dias ou mais sem imagem, o pico de
    verdade pode ter caído no intervalo e não aparecer]
 
-6. CHUVA DOS ÚLTIMOS ANOS  (pluviômetros e satélites da comunidade
-   agrônomo10X (OagronomIA))
+6. CHUVA DOS ÚLTIMOS ANOS
+   Fontes: [as linhas "Chuva" e "Média histórica" do bloco "FONTES DOS DADOS"
+   da `clima_historico`, inteiras e como vieram]
 
 | Ano | Chuva | Média histórica (1991–2020) | Diferença |
 |---|---|---|---|
@@ -128,8 +130,11 @@ fonte. Não é parecer, laudo nem recomendação e não conclui sobre o crédito
   solicitante.
 - Cultura e janela informadas pelo solicitante: soja, de outubro a março.
 
-5. SAFRAS POR SATÉLITE  (índice: Copernicus Sentinel-2 L2A; chuva:
-   pluviômetros e satélites da comunidade agrônomo10X (OagronomIA))
+5. SAFRAS POR SATÉLITE
+   Fontes: Índice: Copernicus Sentinel-2 L2A. Contains modified Copernicus
+   Sentinel data (2023, 2024, 2025) — contém dados modificados do Copernicus
+   Sentinel. Chuva: MERGE (CPTEC/INPE) e CHIRPS v3 (Climate Hazards Center,
+   Universidade da Califórnia em Santa Bárbara).
    Área consultada: lavoura de 286,0 ha. Índice: NDVI.
 
 | Safra | Período | Imagens | Maior intervalo sem imagem | Pico do índice | Chuva | Dias de chuva | Veranicos | Maior veranico |
@@ -143,4 +148,6 @@ fonte. Não é parecer, laudo nem recomendação e não conclui sobre o crédito
    no intervalo e não aparecer.
 ```
 
-O exemplo mostra só dois blocos. O quadro de verdade tem todos.
+O exemplo mostra só dois blocos. O quadro de verdade tem todos. As linhas de
+fonte do exemplo mostram o formato: no quadro de verdade, copie as que a
+ferramenta devolver.

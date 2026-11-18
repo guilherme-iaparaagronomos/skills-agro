@@ -21,6 +21,9 @@ Linhas de controle, que servem para conferir a transcrição:
   temperatura: 10 40             a mínima e a máxima do período (linha TEMPERATURA, escala de dia)
   normal: 267,6 229,1 ...        as 12 médias históricas da chuva, de janeiro a dezembro
   avisos: texto                  o que a ferramenta avisou, para sair no relatório
+  fonte: texto                   uma linha do bloco "FONTES DOS DADOS" da ferramenta, como veio (uma por fonte)
+
+No texto colado como veio, o bloco "FONTES DOS DADOS" do fim da resposta é lido direto.
 
 Teste embutido: python scripts/entrada.py
 """
@@ -125,7 +128,10 @@ _RE_NORMAL = re.compile(r'm[eé]dia\s*(' + _NUM + r')\s*mm', re.I)
 _RE_TITULO = re.compile(r'^Chuva\s*[—–-]\s*(.*?)\s*\((\d{2}/\d{2}/\d{4})\s*a\s*(\d{2}/\d{2}/\d{4}),\s*(\d+)\s*dias\)', re.I)
 _RE_TOTAL = re.compile(r'RESUMO:\s*total\s*(' + _NUM + r')\s*mm', re.I)
 _RE_EXTREMOS = re.compile(r'm[ií]n\s*(' + _NUM + r')\s*°\s*C\s*e\s*m[aá]x\s*(' + _NUM + r')\s*°\s*C\s*no per[ií]odo', re.I)
-_RE_DA_FERRAMENTA = re.compile(r'^(RESUMO|AGRO|TEMPERATURA|COMO DIZER|MÉDIA ANUAL|ANOS INCOMPLETOS|Fonte)\b')
+_RE_DA_FERRAMENTA = re.compile(r'^(RESUMO|AGRO|TEMPERATURA|COMO DIZER|MÉDIA ANUAL|ANOS INCOMPLETOS)\b')
+_RE_BLOCO_DE_FONTES = re.compile(r'^FONTES DOS DADOS\b')      # o bloco com que a ferramenta fecha a resposta
+_RE_FONTE = re.compile(r'^Fontes?:\s*(.+)$', re.I)            # a linha "Fonte: ..." (ou "fonte:" escrita pela IA)
+_RE_INSTRUCAO = re.compile(r'\s+(?:NÃO|NUNCA|SEMPRE)\b')
 _RE_CHAVE = re.compile(r'^([A-Za-zÀ-ÿ_ ]{3,24}):\s*(.*)$')
 
 
@@ -328,13 +334,20 @@ def _linhas_de_controle(nome, valor, meta):
     return True
 
 
+def _guarda_fonte(meta, texto):
+    texto = ' '.join(texto.split())
+    if texto and texto not in meta['fontes']:
+        meta['fontes'].append(texto)
+
+
 def ler(caminho, planilha=None):
-    """Lê o arquivo. Devolve {'arquivo', 'tipo', 'registros', 'meta', 'formatos', 'ignoradas'}."""
+    """Lê o arquivo. Devolve {'arquivo', 'tipo', 'registros', 'meta', 'formatos', 'ignoradas'}.
+    Em meta['fontes'] ficam as linhas de fonte que a ferramenta escreveu no fim da resposta, como vieram."""
     caminho = Path(caminho)
     if not caminho.exists():
         raise ErroDeEntrada(f'Arquivo não encontrado: {caminho}')
     meta = {'local': None, 'latitude': None, 'periodo': None, 'total': None, 'normal': None, 'extremos': None,
-            'dias_declarados': None, 'avisos_da_ferramenta': []}
+            'dias_declarados': None, 'avisos_da_ferramenta': [], 'fontes': []}
     registros, formatos, ignoradas = [], set(), []
     if caminho.suffix.lower() in ('.xlsx', '.xlsm'):
         grade = _grade_de_xlsx(caminho, planilha)
@@ -364,7 +377,20 @@ def ler(caminho, planilha=None):
                 grade = list(csv.reader(io.StringIO('\n'.join(linhas)), delimiter=sep))
             registros, formatos = _de_tabela(grade), {'tabela com cabeçalho'}
         else:
+            em_fontes = False
             for linha in linhas:
+                # as fontes de cada dado, como a ferramenta escreveu: guardadas inteiras, para o relatório citar
+                if _RE_BLOCO_DE_FONTES.match(linha):
+                    em_fontes = True
+                    continue
+                if em_fontes and linha.startswith(('- ', '• ')):
+                    _guarda_fonte(meta, linha[2:])
+                    continue
+                em_fontes = False
+                fonte = _RE_FONTE.match(linha)
+                if fonte:       # depois da fonte, o que vem em maiúsculas ("NÃO nomeie...") é instrução para a IA
+                    _guarda_fonte(meta, _RE_INSTRUCAO.split(fonte.group(1))[0])
+                    continue
                 r = _da_ferramenta(linha)
                 if r:
                     registros.append(r)
@@ -669,8 +695,13 @@ if __name__ == '__main__':
                 (4, '12,3', 19, 29, ''), (5, '0,0', 18, 30, ''), (6, '0,0', 17, 31, ''), (7, '5,0', 19, 30, ''),
                 (8, '0,0', 20, 33, ''), (9, '25,0', 21, 30, ' · confiança baixa · provisório'), (10, '0,0', 20, 31, ''),
                 (11, '0,0', 21, 32, ''), (12, '0,0', 22, 33, '')))
-            + '\nFonte: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).\n')))
+            + '\nFONTES DOS DADOS (cite no fim da resposta a fonte de cada dado que você usar, como está; não descreva '
+              'como os dados são combinados nem processados):\n'
+              '- Chuva: Instituto de exemplo A e produto de exemplo B.\n'
+              '- Temperatura, umidade e vento: fonte de exemplo C.\n')))
         assert t['tipo'] == 'diario' and len(t['registros']) == 13 and t['formatos'] == ['texto da ferramenta']
+        assert t['meta']['fontes'] == ['Chuva: Instituto de exemplo A e produto de exemplo B.',
+                                       'Temperatura, umidade e vento: fonte de exemplo C.'], t['meta']['fontes']
         assert t['meta']['total'] == 1043.0 and t['meta']['extremos'] == (17, 39) and t['meta']['latitude'] == -10.5
         assert t['registros'][3]['chuva'] == 1000.5 and t['registros'][3]['baixa'] and t['registros'][0]['tmed'] == 30.5
         ok, ruim, notas = conferir(t)
@@ -687,7 +718,11 @@ if __name__ == '__main__':
                     '2024-10-08 0,0 20 33\n2024-10-09 25,0 21 30\n2024-10-10 0,0 20 31\n2024-10-11 0,0 21 32\n'
                     '2024-10-12 0,0 22 33\n')
         c = ler(grava('c.txt', compacto))
-        assert c['formatos'] == ['compacto'] and not conferir(c)[1]
+        assert c['formatos'] == ['compacto'] and not conferir(c)[1] and c['meta']['fontes'] == []
+        # a linha "fonte:" (uma por fonte), para quando a IA transcreve os dados no formato compacto
+        cf = ler(grava('cf.txt', compacto + 'fonte: Chuva: Instituto de exemplo A.\n'
+                                            'Fonte: Chuva: Instituto de exemplo A. NÃO nomeie nada ao responder.\n'))
+        assert cf['meta']['fontes'] == ['Chuva: Instituto de exemplo A.'] and not cf['ignoradas'], cf['meta']['fontes']
         assert [r['chuva'] for r in c['registros']] == [r['chuva'] for r in t['registros']]
         for errado, trecho in ((compacto.replace('12,3 19 29', '21,3 19 29'), 'não fecha'),
                                (compacto.replace('2024-10-05 0,0 18 30\n', ''), 'falta'),

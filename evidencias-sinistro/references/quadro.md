@@ -71,8 +71,7 @@ Os links expiram em 1 hora.
 - [avisos das ferramentas, com as palavras delas]
 
 ## 9. Fontes
-- Índice e imagens: Copernicus Sentinel-2 L2A; processado pelas ferramentas da comunidade agrônomo10X (OagronomIA).
-- Chuva e temperatura: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).
+[as linhas do bloco "FONTES DOS DADOS" de cada ferramenta usada (índice, imagens, chuva e temperatura), inteiras e como vieram, sem repetir]
 ```
 
 ## Exemplo (dados inventados)
@@ -158,8 +157,9 @@ Os links expiram em 1 hora.
 - Em 4 dias da janela (28/04 a 01/05/2025) a ferramenta marcou a chuva com confiança baixa.
 
 ## 9. Fontes
-- Índice e imagens: Copernicus Sentinel-2 L2A; processado pelas ferramentas da comunidade agrônomo10X (OagronomIA).
-- Chuva e temperatura: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).
+- Índice: Copernicus Sentinel-2 L2A. Contains modified Copernicus Sentinel data (2025) — contém dados modificados do Copernicus Sentinel.
+- Chuva: MERGE (CPTEC/INPE) e CHIRPS v3 (Climate Hazards Center, Universidade da Califórnia em Santa Bárbara).
+- Temperatura, umidade e vento: dados de satélite modelados — comunidade agrônomo10X (OagronomIA).
 ```
 
 No exemplo o bloco 4 não aparece porque o evento não é de temperatura. Em

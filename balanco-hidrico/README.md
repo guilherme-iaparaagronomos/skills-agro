@@ -70,7 +70,7 @@ programa à parte, para 4.000 anos sorteados; a ETP e o balanço dos dados do
 teste foram recalculados à parte e bateram com o CSV. Pela linha de comando,
 269 conferências, com 25 pedidos que têm de parar com o motivo escrito.
 
-**Com o conector de verdade.** Duas consultas à `clima_historico` num ponto
+**Com o conector de verdade.** Duas consultas à `clima_historico` em um ponto
 do sudoeste de Goiás: 27 anos por mês e uma safra por dia. As 689 linhas
 foram transcritas à mão por uma IA e a soma fechou com o total da ferramenta
 (0,3 mm e 0,4 mm de diferença).
@@ -79,8 +79,15 @@ foram transcritas à mão por uma IA e a soma fechou com o total da ferramenta
 com outro programa rodando os mesmos dados. O sequencial por decêndio não tem
 tabela publicada na conferência. A temperatura efetiva e Hargreaves e Samani
 têm só dois valores publicados cada. Dado de estação: só arquivos montados
-para o teste. A skill ainda não foi usada por um membro numa conversa de
+para o teste. A skill ainda não foi usada por um membro em uma conversa de
 verdade. Os detalhes estão em `references/metodo.md`.
+
+**As fontes dos dados.** Desde 18/11/2026 a ferramenta fecha cada resposta com o
+bloco "FONTES DOS DADOS", e o relatório cita essas linhas como vieram. Foi
+conferido com uma resposta real de 24 meses, colada inteira: as três fontes
+(chuva, média histórica e temperatura) saíram no ano normal e no sequencial
+por mês, no texto e no PDF; sem o bloco no arquivo, o script avisa. Com a
+tabela diária de verdade, esse caminho ainda não foi refeito.
 
 ## Avisos
 
@@ -89,7 +96,7 @@ verdade. Os detalhes estão em `references/metodo.md`.
 - A ETP é estimativa por temperatura, e os três métodos dão valores
   diferentes para os mesmos dados. A escolha é do usuário.
 - A série por dia e a série por mês da ferramenta podem não fechar entre si
-  no mesmo período (9% num teste). O diagnóstico mostra a diferença.
+  no mesmo período (9% em um teste). O diagnóstico mostra a diferença.
 - A conferência da transcrição pega linha faltando e soma que não fecha; não
   pega erro menor que a folga de arredondamento nem dois erros que se
   compensam.

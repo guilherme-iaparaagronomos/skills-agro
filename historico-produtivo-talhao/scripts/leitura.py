@@ -34,6 +34,11 @@ VERANICOS = re.compile(r'^\s*VERANICOS\s*\((.+?)\)\s*:\s*(\d+|nenhum)')
 VERANICO = re.compile(r'^\s*-\s*de (\d{2}/\d{2}/\d{4}) a (\d{2}/\d{2}/\d{4}) \((\d+) dias, ([\d.,]+) mm no total\)')
 RESUMO = re.compile(r'RESUMO:\s*total\s+([\d.,]+)\s*mm(?:\s*·\s*média histórica \(1991[–-]2020\) do mesmo período:\s*([\d.,]+)\s*mm\s*→\s*([+\-−]?\d+)\s*%)?')
 PERIODO = re.compile(r'^\s*PER[IÍ]ODO\s*:\s*(\d{2}/\d{2}/\d{4})\s+a\s+(\d{2}/\d{2}/\d{4})', re.IGNORECASE)
+BLOCO_DE_FONTES = re.compile(r'^\s*FONTES DOS DADOS\b')          # o bloco com que a ferramenta fecha a resposta
+ITEM_DE_FONTE = re.compile(r'^\s*[-•]\s+(.+)$')
+FONTE_SOLTA = re.compile(r'^\s*Fontes?:\s*(.+)$', re.IGNORECASE)   # a linha "Fonte: ..." avulsa
+ANO_DA_FONTE = re.compile(r'\((\d{4})\)')
+INSTRUCAO = re.compile(r'\s+(?:NÃO|NUNCA|SEMPRE)\b')
 
 
 class LeituraInvalida(Exception):
@@ -69,12 +74,40 @@ def _nome(rotulo):
 
 def _nova(origem):
     return {'origem': origem, 'indice': None, 'inicio': None, 'fim': None, 'dias': None, 'periodo_informado': False,
-            'chuva': None, 'veranicos': None, 'normal': None, 'curvas': {}, 'pontos_declarados': {}, 'avisos': []}
+            'chuva': None, 'veranicos': None, 'normal': None, 'curvas': {}, 'pontos_declarados': {}, 'avisos': [],
+            'fontes': []}
+
+
+def _guardar_fonte(lista, texto):
+    texto = ' '.join(texto.split())
+    if texto and texto not in lista:
+        lista.append(texto)
+
+
+def juntar_fontes(listas):
+    """Junta as linhas de fonte de várias respostas, sem repetir e na ordem em que aparecem. Linhas que só mudam no
+    ano entre parênteses (o ano dos dados do satélite) viram uma só, com os anos em ordem."""
+    anos, ordem = {}, []
+    for linha in (l for lista in listas for l in lista):
+        achados = ANO_DA_FONTE.findall(linha)
+        chave = ANO_DA_FONTE.sub('(@)', linha) if len(achados) == 1 else linha
+        if chave not in anos:
+            anos[chave] = set()
+            ordem.append(chave)
+        if len(achados) == 1:
+            anos[chave].add(achados[0])
+    return [c.replace('(@)', '(' + ', '.join(sorted(anos[c])) + ')') if anos[c] else c for c in ordem]
+
+
+def fontes_de(safras):
+    """As fontes dos dados como as ferramentas escreveram no fim de cada resposta colada. A linha da temperatura
+    fica de fora: o histórico só usa o índice, a chuva e a média histórica."""
+    return [f for f in juntar_fontes(s.get('fontes', []) for s in safras) if not f.lower().startswith('temperatura')]
 
 
 def ler_texto(texto, origem='texto'):
     """Devolve a lista de safras encontradas no texto (uma por título de curva_com_chuva; sem título, uma só)."""
-    safras, atual, talhao_iso = [], None, None
+    safras, atual, talhao_iso, em_fontes = [], None, None, False
     for bruta in texto.replace('\r\n', '\n').split('\n'):
         linha = bruta.rstrip()
         m = TITULO.search(linha)
@@ -83,13 +116,27 @@ def ler_texto(texto, origem='texto'):
             safras.append(atual)
             atual.update(indice=m.group(1).upper(), inicio=data_br(m.group(2)), fim=data_br(m.group(3)),
                          dias=int(m.group(4)), periodo_informado=True)
-            talhao_iso = None
+            talhao_iso, em_fontes = None, False
             continue
         if atual is None:
             if not linha.strip():
                 continue
             atual = _nova(origem)
             safras.append(atual)
+        # as fontes de cada dado, como a ferramenta escreveu no fim da resposta: guardadas inteiras
+        if BLOCO_DE_FONTES.match(linha):
+            em_fontes = True
+            continue
+        if em_fontes:
+            m = ITEM_DE_FONTE.match(linha)
+            if m:
+                _guardar_fonte(atual['fontes'], m.group(1))
+                continue
+            em_fontes = False
+        m = FONTE_SOLTA.match(linha)
+        if m:       # depois da fonte, o que vem em maiúsculas ("NÃO nomeie...") é instrução para a IA, não fonte
+            _guardar_fonte(atual['fontes'], INSTRUCAO.split(m.group(1))[0])
+            continue
         m = PERIODO.match(linha)
         if m:
             if atual['curvas']:      # uma linha PERÍODO depois de uma curva começa outra safra
@@ -178,7 +225,7 @@ def _fechar(s):
 
 
 def rotulo_da_safra(inicio, fim):
-    """'2023/24' quando a janela vira o ano; '2023' quando cabe num ano só."""
+    """'2023/24' quando a janela vira o ano; '2023' quando cabe em um ano só."""
     return f'{inicio.year}/{str(fim.year)[2:]}' if fim.year != inicio.year else str(inicio.year)
 
 
@@ -252,7 +299,24 @@ def _autoteste():
     assert s['veranicos']['n'] == 2 and s['veranicos']['lista'][0]['dias'] == 12 and s['veranicos']['lista'][1]['mm'] == 0.0
     assert s['curvas']['Área'][0] == (date(2023, 10, 14), 0.21) and len(s['curvas']['Área']) == 5
     assert s['normal'] == {'total_mm': 1230.0, 'normal_mm': 1400.0, 'dif_pct': -12}, s['normal']
-    assert s['rotulo'] == '2023/24'
+    assert s['rotulo'] == '2023/24' and s['fontes'] == []
+
+    # o bloco de fontes com que a ferramenta fecha a resposta: lido inteiro, sem confundir com a lista de veranicos
+    bloco = ('\nCOMO RESPONDER: descreva o que os dados mostram.\n\n'
+             'FONTES DOS DADOS (cite no fim da resposta a fonte de cada dado que você usar, como está):\n'
+             '- Índice: satélite de exemplo. Dados do satélite de exemplo ({ano}) — texto da licença.\n'
+             '- Chuva: instituto de exemplo A e produto de exemplo B (universidade de exemplo).\n')
+    sf = ler_texto(r1 + bloco.format(ano=2024) + '\nFonte: Média histórica: produto de exemplo B. NÃO nomeie nada.\n', 'rf')[0]
+    assert sf['fontes'] == ['Índice: satélite de exemplo. Dados do satélite de exemplo (2024) — texto da licença.',
+                            'Chuva: instituto de exemplo A e produto de exemplo B (universidade de exemplo).',
+                            'Média histórica: produto de exemplo B.'], sf['fontes']
+    assert sf['veranicos']['n'] == 2 and len(sf['veranicos']['lista']) == 2 and len(sf['curvas']['Área']) == 5
+    outra = ler_texto(r1.replace('2023', '2021').replace('2024', '2022') + bloco.format(ano=2022), 'rg')[0]
+    juntas = fontes_de([outra, sf])
+    assert juntas == ['Índice: satélite de exemplo. Dados do satélite de exemplo (2022, 2024) — texto da licença.',
+                      'Chuva: instituto de exemplo A e produto de exemplo B (universidade de exemplo).',
+                      'Média histórica: produto de exemplo B.'], juntas
+    assert fontes_de([s]) == [] and fontes_de([dict(fontes=['Chuva: A.', 'Temperatura: modelo de exemplo.'])]) == ['Chuva: A.']
 
     # vários talhões e duas safras no mesmo arquivo
     r2 = (
@@ -311,7 +375,7 @@ def _autoteste():
         assert 'índices diferentes' in str(e)
     else:
         raise AssertionError('devia recusar índices misturados')
-    print('leitura.py: autoteste ok (4 formatos lidos, 6 recusas)')
+    print('leitura.py: autoteste ok (4 formatos lidos, bloco de fontes, 6 recusas)')
 
 
 if __name__ == '__main__':

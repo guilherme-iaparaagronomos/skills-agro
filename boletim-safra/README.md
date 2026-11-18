@@ -38,14 +38,19 @@ Skills; em outras IAs compatíveis, a pasta de skills do projeto).
 
 ## Como foi testada
 
-- O roteiro foi seguido uma vez com as ferramentas de verdade, numa fazenda de
+- O roteiro foi seguido uma vez com as ferramentas de verdade, em uma fazenda de
   cerca de 90 ha com 5 talhões: a curva recente por talhão, a mesma época do
   ano anterior, a chuva dos últimos 15 dias e da safra, a previsão de 7 dias
   e o laudo pedido pela data da última imagem.
 - **O que não foi feito**: repetir o boletim por várias semanas na mesma
-  fazenda; usar numa fazenda com dezenas de talhões; rodar a skill inteira
+  fazenda; usar em uma fazenda com dezenas de talhões; rodar a skill inteira
   dentro de uma conversa em duas IAs diferentes. O exemplo do `boletim.md` é
   inventado.
+
+- **As fontes dos dados**: desde 18/11/2026 as ferramentas fecham cada
+  resposta com o bloco "FONTES DOS DADOS", e o roteiro passou a copiar as
+  fontes dali. O formato do bloco foi conferido em respostas reais; o
+  roteiro inteiro não foi seguido de novo depois dessa mudança.
 
 ## Avisos
 

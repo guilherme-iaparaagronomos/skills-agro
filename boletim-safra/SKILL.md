@@ -2,11 +2,11 @@
 name: boletim-safra
 description: >-
   Monta o boletim periódico de uma fazenda pelas ferramentas da ClaudIA Sat e
-  da ClaudIA Clima, talhão por talhão, num formato fixo. Traz o índice de
+  da ClaudIA Clima, talhão por talhão, em um formato fixo. Traz o índice de
   vegetação da última imagem ao lado da imagem anterior e da mesma época das
   safras passadas, a chuva do período e da safra ao lado da média histórica, a
   previsão dos próximos dias e o laudo em PDF da última imagem. Conduz a conversa: o que perguntar, quais
-  ferramentas chamar, em que ordem, e como escrever o boletim num formato fixo,
+  ferramentas chamar, em que ordem, e como escrever o boletim em um formato fixo,
   que se repete toda semana, quinzena ou mês. Só fatos, cada um com a fonte:
   não recomenda manejo e não aponta talhão bom ou ruim. Acione com "boletim da
   fazenda", "boletim da safra", "como está a fazenda esta semana", "resumo
@@ -67,7 +67,7 @@ responsável técnico.
   talhões) ou arquivo de perímetro com os talhões nos atributos (GeoJSON, KML
   ou WKT; shapefile, converta para GeoJSON sem perder os atributos).
 
-## Antes de chamar: as perguntas (numa mensagem só)
+## Antes de chamar: as perguntas (em uma mensagem só)
 
 Na primeira vez:
 
@@ -166,11 +166,14 @@ data da última imagem.
   `historico-produtivo-talhao`; para documentar um evento,
   `evidencias-sinistro`.
 
-## Sigilo das fontes
+## Fontes dos dados
 
-Cite as fontes como as ferramentas mandam: o índice e as imagens,
-"Copernicus Sentinel-2 L2A"; a chuva, "pluviômetros e satélites da comunidade
-agrônomo10X (OagronomIA)", sem nomear produto, instituto ou satélite; a
-previsão, com a linha de fonte que a `previsao_dias` devolve, sem acrescentar
-nada sobre o modelo. Sobre como o dado é processado, a única frase é:
-processado pelas ferramentas da comunidade agrônomo10X (OagronomIA).
+A fonte de cada dado é a que a ferramenta escreve no fim da resposta: o bloco
+"FONTES DOS DADOS" (índice, imagens e chuva) e, na `previsao_dias`, a linha
+"Fonte:". Na seção de fontes do boletim, copie as linhas dos dados que você
+usou, inteiras e como vieram, sem repetir; a da previsão, sem acrescentar nada
+sobre o modelo. Não troque por um nome genérico, não acrescente fonte que a
+ferramenta não informou e não descreva como os dados são combinados nem
+processados: não cite plataforma, biblioteca, nuvem nem modelo. Se o usuário
+perguntar como é feito, o processamento é das ferramentas da comunidade
+agrônomo10X (OagronomIA) e não é divulgado.

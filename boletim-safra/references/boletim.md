@@ -44,12 +44,14 @@ O boletim descreve o que o satélite e o registro de chuva mostram. A leitura
 da lavoura e a decisão de manejo são do responsável técnico.
 
 ## 7. Fontes
-- Índice e imagens: Copernicus Sentinel-2 L2A; processado pelas ferramentas da comunidade agrônomo10X (OagronomIA).
-- Chuva: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).
+[as linhas do bloco "FONTES DOS DADOS" de cada ferramenta usada, inteiras e como vieram, sem repetir]
 [a linha de fonte da previsão, exatamente como a ferramenta devolveu]
 ```
 
 ## Exemplo (dados inventados)
+
+As linhas de fonte do exemplo mostram o formato: no boletim de verdade, copie
+as que a ferramenta devolver.
 
 ```
 # Boletim da safra — Fazenda Exemplo
@@ -95,7 +97,7 @@ O boletim descreve o que o satélite e o registro de chuva mostram. A leitura
 da lavoura e a decisão de manejo são do responsável técnico.
 
 ## 7. Fontes
-- Índice e imagens: Copernicus Sentinel-2 L2A; processado pelas ferramentas da comunidade agrônomo10X (OagronomIA).
-- Chuva: pluviômetros e satélites da comunidade agrônomo10X (OagronomIA).
+- Índice: Copernicus Sentinel-2 L2A. Contains modified Copernicus Sentinel data (2025) — contém dados modificados do Copernicus Sentinel.
+- Chuva: MERGE (CPTEC/INPE) e CHIRPS v3 (Climate Hazards Center, Universidade da Califórnia em Santa Bárbara).
 [a linha de fonte da previsão, exatamente como a ferramenta devolveu]
 ```

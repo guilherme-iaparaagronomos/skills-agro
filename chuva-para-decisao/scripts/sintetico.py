@@ -2,7 +2,7 @@
 as ferramentas de clima devolvem. Nenhum número aqui é de lugar de verdade.
 
 As séries têm resposta conhecida: o início e o fim das águas de cada ano são
-plantados numa data, e os testes conferem se as regras devolvem essas datas.
+plantados em uma data, e os testes conferem se as regras devolvem essas datas.
 
 Teste embutido: python scripts/sintetico.py
 """
@@ -161,6 +161,7 @@ def resultado_demo():
     r['fim'] = chuva.montar_fim(texto_fim(), e['seco_mm'], e['fim_dias'])
     r['duracao'] = chuva.duracao_das_aguas(r)
     r['contexto'] = chuva.ler_contexto(CONTEXTO)
+    r['fontes'] = [('demonstração', ['Chuva e graus-dia: exemplo inventado, sem dado de verdade.'])]
     return r
 
 

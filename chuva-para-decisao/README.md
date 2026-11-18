@@ -1,6 +1,6 @@
 # Chuva para decisão
 
-Skill para a sua IA descrever como a chuva se comportou num local, na época
+Skill para a sua IA descrever como a chuva se comportou em um local, na época
 que interessa a uma decisão de plantio ou de manejo. A resposta vem sempre em
 contagem de anos: "em 7 de 10 anos choveu pelo menos 20 mm no primeiro
 decêndio de outubro", "veranico de 10 dias ou mais em 4 de 10 anos".
@@ -68,7 +68,7 @@ diante.
 ## Como foi testada
 
 - **Testes embutidos** em seis módulos, com séries inventadas de resposta
-  conhecida: início das águas plantado numa data, falso início, veranico de
+  conhecida: início das águas plantado em uma data, falso início, veranico de
   tamanho conhecido, decêndio com frequência conhecida, fim das águas
   plantado.
 - **Contas refeitas por outro caminho** (expressões regulares e laços
@@ -79,7 +79,7 @@ diante.
 - **Linha de comando**: 33 casos, 10 de uso normal e 23 de entrada ruim (dia
   a menos, valor trocado, ano faltando, ano repetido, locais diferentes,
   regra pela metade, arquivo trocado). Cada um recusa com o motivo.
-- **Com o conector de verdade**, num ponto do Centro-Oeste: a tabela mensal de
+- **Com o conector de verdade**, em um ponto do Centro-Oeste: a tabela mensal de
   julho de 1998 a junho de 2026, o ano em curso, dez anos da janela de 15/09 a
   30/11 e cinco anos da janela de 01/04 a 31/05, em 17 consultas. A
   transcrição foi feita pela IA, como no uso real: 1.747 valores, e todos os
@@ -89,13 +89,18 @@ diante.
   lendo o texto da ferramenta.
 - **O PDF foi olhado**, página a página, com os dados reais e com a
   demonstração.
+- **As fontes dos dados**: desde 18/11/2026 a ferramenta fecha cada resposta
+  com o bloco "FONTES DOS DADOS". Os arquivos do teste real foram rodados de
+  novo com o bloco que a ferramenta devolve hoje para o mesmo ponto colado no
+  fim, e as fontes saíram no relato e no PDF como vieram; sem o bloco, o
+  script avisa. As 17 consultas não foram refeitas.
 
 O que **não** foi testado:
 
 - outro regime de chuva com dado real. Local sem estação seca, com chuva de
   inverno ou no hemisfério norte só passou por séries inventadas;
 - janela que atravessa a virada do ano com dado real (só inventado);
-- dia "SEM DADO" numa resposta real: não apareceu nenhum nos testes. O
+- dia "SEM DADO" em uma resposta real: não apareceu nenhum nos testes. O
   tratamento foi testado com dado inventado;
 - o roteiro dentro de uma conversa com um usuário, e em mais de uma IA.
 
@@ -110,5 +115,5 @@ O que **não** foi testado:
 - A tabela mensal e a janela dia a dia saem de réguas diferentes da
   ferramenta: não compare os milímetros de uma com os da outra.
 
-Fonte da chuva: pluviômetros e satélites da comunidade agrônomo10X
-(OagronomIA).
+As fontes dos dados saem no fim do relato, como a ferramenta as informa no
+bloco "FONTES DOS DADOS" de cada resposta.

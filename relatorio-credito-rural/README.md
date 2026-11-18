@@ -48,7 +48,12 @@ O roteiro foi seguido de ponta a ponta com os conectores ligados, em duas
 áreas: um imóvel de 1.670 ha pelo número do CAR e uma lavoura de 90 ha com
 cinco safras, mais uma safra em andamento e uma safra antiga com poucas
 imagens. O formato do quadro saiu desses testes. A skill ainda não foi usada
-num processo de crédito de verdade.
+em um processo de crédito de verdade.
+
+- **As fontes dos dados**: desde 18/11/2026 as ferramentas fecham cada
+  resposta com o bloco "FONTES DOS DADOS", e o roteiro passou a copiar as
+  fontes dali. O formato do bloco foi conferido em respostas reais; o
+  roteiro inteiro não foi seguido de novo depois dessa mudança.
 
 ## Avisos
 

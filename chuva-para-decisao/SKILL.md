@@ -4,7 +4,7 @@ description: >-
   Descreve o que o registro de chuva de um local mostra para apoiar uma decisão
   de plantio ou de manejo: calendário mensal, veranicos, chuva por decêndio e
   início e fim das águas, sempre em contagem de anos. Usa as ferramentas da
-  ClaudIA Clima: a tabela mensal desde 1998, o ano em curso e, numa janela de
+  ClaudIA Clima: a tabela mensal desde 1998, o ano em curso e, em uma janela de
   dias que o usuário escolhe, o dia a dia de vários anos. Um script confere a
   transcrição contra os totais da ferramenta antes de calcular e entrega
   tabelas, gráficos e PDF. Os cortes e as regras (dia seco, veranico,
@@ -68,7 +68,7 @@ devolveram.
   perímetro (GeoJSON, KML ou WKT) ou latitude e longitude. Use o MESMO local
   em todas as chamadas.
 
-## Antes de chamar: as perguntas (numa mensagem só)
+## Antes de chamar: as perguntas (em uma mensagem só)
 
 1. **O local** e o nome dele para o título.
 2. **A decisão**: o que ele quer decidir e em que época do ano. Daí sai quais
@@ -105,7 +105,7 @@ resposta ocupa a conversa.
 |---|---|---|
 | Tabela mensal desde 1998 | 1 | cerca de 12 mil tokens |
 | Ano em curso | 1 | pequeno |
-| Janela dia a dia | 1 por ano | cerca de 3 mil tokens por ano numa janela de 77 dias |
+| Janela dia a dia | 1 por ano | cerca de 3 mil tokens por ano em uma janela de 77 dias |
 | Janela do fim das águas | 1 por ano | idem |
 
 Some, diga o total ("são 12 consultas") e só chame com o de acordo dele. Dez
@@ -120,7 +120,9 @@ menos anos.
    julho) e `data_fim` no último dia do último ano agrícola já encerrado. Se
    houver graus-dia, passe `base_gdd_c` com a base que o usuário informou.
    Grave em `mensal.txt` as linhas `Chuva — ...`, `RESUMO` e `TEMPERATURA` como
-   vieram e uma linha por mês (formatos em `references/arquivos.md`).
+   vieram e uma linha por mês (formatos em `references/arquivos.md`). No fim
+   de cada arquivo que você gravar, cole o bloco "FONTES DOS DADOS" da
+   resposta, como veio: é dele que o relato tira a fonte de cada dado.
 2. **Ano em curso**, só se a decisão é para a safra que está começando ou em
    andamento: `contexto_chuva` no mesmo local. Grave as frases em
    `contexto.txt` e repasse como vieram.
@@ -174,7 +176,7 @@ menos anos.
 - **Tabela mensal e janela não se misturam.** Os milímetros da chamada longa
   (mensal) e os da chamada curta (dia a dia) saem de réguas diferentes da
   ferramenta e não fecham entre si. Compare ano com ano dentro de cada bloco.
-- A "média histórica" e o "→ %" que a ferramenta devolve numa janela curta
+- A "média histórica" e o "→ %" que a ferramenta devolve em uma janela curta
   não entram no relato: a skill compara os anos entre si.
 
 ## O que a skill não faz
@@ -188,11 +190,18 @@ menos anos.
 - Não chama a ferramenta de novo para "melhorar" um resultado e não completa
   ano que faltou com estimativa.
 
-## Sigilo das fontes
+## Fontes dos dados
 
-A fonte da chuva é citada como a ferramenta manda: "pluviômetros e satélites
-da comunidade agrônomo10X (OagronomIA)". Não nomeie produto, instituto, índice
-ou satélite, e não deduza como o dado é processado.
+A fonte de cada dado é a que a ferramenta escreve no bloco "FONTES DOS DADOS",
+no fim de cada resposta. O script lê essas linhas dos arquivos e as põe no fim
+do relato, inteiras e como vieram, dizendo de que parte é cada uma quando
+mudam (a do ano em curso não é igual à da tabela mensal); se o bloco não foi
+colado, ele avisa e você corrige o arquivo antes de entregar. Não troque por
+um nome genérico, não acrescente fonte que a ferramenta não informou e não
+descreva como os dados são combinados nem processados: não cite plataforma,
+biblioteca, nuvem nem modelo. Se o usuário perguntar como é feito, o
+processamento é das ferramentas da comunidade agrônomo10X (OagronomIA) e não é
+divulgado.
 
 As regras, as fórmulas e os limites: `references/metodo.md`. O formato dos
 arquivos: `references/arquivos.md`.
